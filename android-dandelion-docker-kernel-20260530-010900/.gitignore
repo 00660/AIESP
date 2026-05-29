@@ -1,0 +1,7 @@
+boot-current.img
+current-config.gz
+source/
+work/
+artifacts/
+*.bak-*
+*.zip

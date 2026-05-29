@@ -1,0 +1,54 @@
+name: Build dandelion Docker kernel
+
+on:
+  workflow_dispatch:
+    inputs:
+      kernel_repo:
+        description: Kernel source repository
+        required: true
+        default: https://github.com/TelegramAt25/niigo_kernel_xiaomi_blossom.git
+      kernel_ref:
+        description: Kernel source branch/tag/ref
+        required: true
+        default: yoka_rb2
+      defconfig:
+        description: Fallback defconfig when current.config is not used
+        required: true
+        default: stock_defconfig
+      kernel_release:
+        description: Kernel release string expected by the ROM
+        required: true
+        default: 4.19.127-perf-g7288046673d5
+  push:
+    branches:
+      - dandelion-docker-kernel
+    paths:
+      - .github/workflows/build-dandelion-docker-kernel.yml
+      - android-dandelion-docker-kernel-20260530-010900/**
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout AIESP build inputs
+        uses: actions/checkout@v4
+
+      - name: Build kernel
+        env:
+          KERNEL_REPO: ${{ inputs.kernel_repo || 'https://github.com/TelegramAt25/niigo_kernel_xiaomi_blossom.git' }}
+          KERNEL_REF: ${{ inputs.kernel_ref || 'yoka_rb2' }}
+          DEFCONFIG: ${{ inputs.defconfig || 'stock_defconfig' }}
+          BASE_CONFIG: android-dandelion-docker-kernel-20260530-010900/current.config
+          KERNEL_RELEASE: ${{ inputs.kernel_release || '4.19.127-perf-g7288046673d5' }}
+        run: |
+          chmod +x android-dandelion-docker-kernel-20260530-010900/scripts/build-dandelion-docker-kernel.sh
+          android-dandelion-docker-kernel-20260530-010900/scripts/build-dandelion-docker-kernel.sh
+
+      - name: Upload kernel artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dandelion-docker-kernel
+          path: android-dandelion-docker-kernel-20260530-010900/artifacts/*
+          if-no-files-found: error
