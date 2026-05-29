@@ -40,6 +40,20 @@ else
   git -C "$SRC_DIR" checkout FETCH_HEAD
 fi
 
+apply_source_patches() {
+  log "Apply source compatibility patches"
+
+  if grep -q 'return err;' "$SRC_DIR/ipc/msg.c"; then
+    sed -i 's/return err;/return;/' "$SRC_DIR/ipc/msg.c"
+  fi
+
+  if grep -q 'trace_sched_set_cpuprefer(p);' "$SRC_DIR/kernel/sched/extension/tuning.c"; then
+    sed -i '/trace_sched_set_cpuprefer(p);/d' "$SRC_DIR/kernel/sched/extension/tuning.c"
+  fi
+}
+
+apply_source_patches
+
 log "Prepare base config"
 if [[ -f "$BASE_CONFIG" ]]; then
   cp "$BASE_CONFIG" "$OUT_DIR/.config"
