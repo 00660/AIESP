@@ -168,6 +168,14 @@ log "Pin release metadata and Docker options"
   --disable MTK_COMBO_GPS \
   --disable MTK_GPS_SUPPORT \
   --disable MTK_GPS_EMI \
+  --disable MTK_IMGSENSOR \
+  --disable MTK_LENS \
+  --disable MTK_CAM_CAL \
+  --disable MTK_FLASHLIGHT \
+  --disable MTK_CAMERA_ISP \
+  --disable MTK_CAMERA_ISP_DPE_SUPPORT \
+  --disable MTK_CAMERA_ISP_FD_SUPPORT \
+  --disable MTK_CAMERA_ISP_CAMERA_SUPPORT \
   --disable FHANDLE
 
 make "${MAKE_ARGS[@]}" olddefconfig
