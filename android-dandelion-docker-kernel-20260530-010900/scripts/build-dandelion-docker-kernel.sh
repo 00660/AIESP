@@ -108,6 +108,13 @@ flag = "ccflags-y += -Wno-unused-variable\n"
 if flag not in text:
     text = text.replace("ccflags-y += -DTEXT_OFFSET=$(TEXT_OFFSET)\n", "ccflags-y += -DTEXT_OFFSET=$(TEXT_OFFSET)\n" + flag, 1)
 mrdump_makefile.write_text(text)
+
+devapc = src / "drivers/soc/mediatek/devapc/mt6765/devapc.c"
+text = devapc.read_text()
+include = "#include <linux/sched/clock.h>\n"
+if include not in text:
+    text = text.replace("#include <linux/sched.h>\n", "#include <linux/sched.h>\n" + include, 1)
+devapc.write_text(text)
 PY
 }
 
@@ -176,6 +183,8 @@ log "Pin release metadata and Docker options"
   --disable MTK_CAMERA_ISP_DPE_SUPPORT \
   --disable MTK_CAMERA_ISP_FD_SUPPORT \
   --disable MTK_CAMERA_ISP_CAMERA_SUPPORT \
+  --disable MTK_LCM \
+  --disable MTK_ROUND_CORNER_SUPPORT \
   --disable FHANDLE
 
 make "${MAKE_ARGS[@]}" olddefconfig
