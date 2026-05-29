@@ -65,7 +65,7 @@ if [[ "$TOOLCHAIN" == "clang" ]]; then
     HOSTCC=clang
     HOSTCXX=clang++
     CLANG_TRIPLE=aarch64-linux-gnu-
-    CLANG_PREFIX32=-B/usr/bin/
+    CLANG_PREFIX32=-B/usr/bin/arm-linux-gnueabi-
     CLANG_GCC32_TC=--gcc-toolchain=/usr
     CROSS_COMPILE=aarch64-linux-gnu-
     CROSS_COMPILE_ARM32=arm-linux-gnueabi-
