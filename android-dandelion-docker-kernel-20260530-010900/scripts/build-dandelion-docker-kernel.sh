@@ -165,6 +165,9 @@ log "Pin release metadata and Docker options"
   --enable IP_NF_TARGET_REDIRECT \
   --enable OVERLAY_FS \
   --disable DRM_VIRTIO_GPU \
+  --disable MTK_COMBO_GPS \
+  --disable MTK_GPS_SUPPORT \
+  --disable MTK_GPS_EMI \
   --disable FHANDLE
 
 make "${MAKE_ARGS[@]}" olddefconfig
