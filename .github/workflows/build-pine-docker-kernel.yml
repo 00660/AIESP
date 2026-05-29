@@ -1,0 +1,57 @@
+name: Build pine Docker kernel
+
+on:
+  workflow_dispatch:
+    inputs:
+      kernel_repo:
+        description: Kernel source repository
+        required: true
+        default: https://github.com/LineageOS/android_kernel_xiaomi_msm8937.git
+      kernel_ref:
+        description: Kernel source branch/tag/ref
+        required: true
+        default: lineage-19.1
+      defconfig:
+        description: Fallback defconfig when current.config is not used
+        required: true
+        default: msm8937-perf_defconfig
+      toolchain:
+        description: clang or gcc
+        required: true
+        default: clang
+        type: choice
+        options:
+          - clang
+          - gcc
+  push:
+    branches:
+      - pine-docker-kernel
+    paths:
+      - .github/workflows/build-pine-docker-kernel.yml
+      - android-pine-docker-kernel-20260529-090250/**
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout AIESP build inputs
+        uses: actions/checkout@v4
+
+      - name: Build kernel
+        env:
+          KERNEL_REPO: ${{ inputs.kernel_repo || 'https://github.com/LineageOS/android_kernel_xiaomi_msm8937.git' }}
+          KERNEL_REF: ${{ inputs.kernel_ref || 'lineage-19.1' }}
+          DEFCONFIG: ${{ inputs.defconfig || 'msm8937-perf_defconfig' }}
+          TOOLCHAIN: ${{ inputs.toolchain || 'clang' }}
+        run: |
+          chmod +x android-pine-docker-kernel-20260529-090250/scripts/build-pine-docker-kernel.sh
+          android-pine-docker-kernel-20260529-090250/scripts/build-pine-docker-kernel.sh
+
+      - name: Upload kernel artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pine-docker-kernel
+          path: android-pine-docker-kernel-20260529-090250/artifacts/*
+          if-no-files-found: error

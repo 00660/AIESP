@@ -1,0 +1,2 @@
+.github/workflows/*.yml text eol=lf
+android-pine-docker-kernel-*/** text eol=lf
