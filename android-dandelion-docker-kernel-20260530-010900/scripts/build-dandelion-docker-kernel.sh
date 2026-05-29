@@ -43,13 +43,36 @@ fi
 apply_source_patches() {
   log "Apply source compatibility patches"
 
-  if grep -q 'return err;' "$SRC_DIR/ipc/msg.c"; then
-    sed -i 's/return err;/return;/' "$SRC_DIR/ipc/msg.c"
-  fi
+  python3 - "$SRC_DIR" <<'PY'
+from pathlib import Path
+import sys
 
-  if grep -q 'trace_sched_set_cpuprefer(p);' "$SRC_DIR/kernel/sched/extension/tuning.c"; then
-    sed -i '/trace_sched_set_cpuprefer(p);/d' "$SRC_DIR/kernel/sched/extension/tuning.c"
-  fi
+src = Path(sys.argv[1])
+
+msg = src / "ipc/msg.c"
+text = msg.read_text()
+old = "\tif (IS_ENABLED(CONFIG_PROC_STRIPPED))\n\t\treturn err;\n\n\tipc_init_proc_interface"
+new = "\tif (IS_ENABLED(CONFIG_PROC_STRIPPED))\n\t\treturn;\n\n\tipc_init_proc_interface"
+if old not in text:
+    raise SystemExit("expected msg_init PROC_STRIPPED return pattern not found")
+msg.write_text(text.replace(old, new, 1))
+
+tuning = src / "kernel/sched/extension/tuning.c"
+text = tuning.read_text()
+text = text.replace("\t\ttrace_sched_set_cpuprefer(p);\n", "")
+tuning.write_text(text)
+
+fair = src / "kernel/sched/fair.c"
+text = fair.read_text()
+text = text.replace(
+    "\t\ttrace_sched_big_task_rotation(wr->src_cpu, wr->dst_cpu,\n"
+    "\t\t\t\t\twr->src_task->pid, wr->dst_task->pid,\n"
+    "\t\t\t\t\tfalse, set_uclamp);\n",
+    "",
+)
+text = text.replace("\t\t\ttrace_sched_big_task_migration(p->pid, cpu, new_cpu);\n", "")
+fair.write_text(text)
+PY
 }
 
 apply_source_patches
