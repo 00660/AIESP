@@ -57,6 +57,14 @@ if old not in text:
     raise SystemExit("expected msg_init PROC_STRIPPED return pattern not found")
 msg.write_text(text.replace(old, new, 1))
 
+sem = src / "ipc/sem.c"
+text = sem.read_text()
+old = "\tif (IS_ENABLED(CONFIG_PROC_STRIPPED))\n\t\treturn 0;\n\tipc_init_proc_interface"
+new = "\tif (IS_ENABLED(CONFIG_PROC_STRIPPED))\n\t\treturn;\n\tipc_init_proc_interface"
+if old not in text:
+    raise SystemExit("expected sem_init PROC_STRIPPED return pattern not found")
+sem.write_text(text.replace(old, new, 1))
+
 tuning = src / "kernel/sched/extension/tuning.c"
 text = tuning.read_text()
 text = text.replace("\t\ttrace_sched_set_cpuprefer(p);\n", "")
@@ -72,6 +80,11 @@ text = text.replace(
 )
 text = text.replace("\t\t\ttrace_sched_big_task_migration(p->pid, cpu, new_cpu);\n", "")
 fair.write_text(text)
+
+module = src / "kernel/module.c"
+text = module.read_text()
+text = text.replace("mod->sect_attrs->attrs[i].name", "mod->sect_attrs->attrs[i].battr.attr.name")
+module.write_text(text)
 PY
 }
 
