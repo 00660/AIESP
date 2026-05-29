@@ -93,6 +93,14 @@ new = "#if NR_CPUS < BITS_PER_LONG\n\t*cpumask_bits(dstp) = BIT(NR_CPUS) - 1;\n#
 if old not in text:
     raise SystemExit("expected cpumask_setall BIT pattern not found")
 cpumask.write_text(text.replace(old, new, 1))
+
+mrdump = src / "drivers/misc/mediatek/aee/mrdump/mrdump_helper.c"
+text = mrdump.read_text()
+old = "void aee_zap_locks(void)\n{\n\taee_wdt_zap_locks();\n}\n"
+new = "void aee_zap_locks(void)\n{\n}\n"
+if old in text:
+    text = text.replace(old, new, 1)
+mrdump.write_text(text)
 PY
 }
 
