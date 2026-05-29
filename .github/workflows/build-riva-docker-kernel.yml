@@ -1,0 +1,63 @@
+name: Build riva Docker kernel
+
+on:
+  workflow_dispatch:
+    inputs:
+      kernel_repo:
+        description: Kernel source repository
+        required: true
+        default: https://github.com/crdroidandroid/android_kernel_xiaomi_rova.git
+      kernel_ref:
+        description: Kernel source branch/tag/ref
+        required: true
+        default: "14.0"
+      defconfig:
+        description: Fallback defconfig when current.config is not used
+        required: true
+        default: vendor/msm8937-perf_defconfig
+      toolchain:
+        description: clang or gcc
+        required: true
+        default: clang
+        type: choice
+        options:
+          - clang
+          - gcc
+      kernel_release:
+        description: Kernel release string expected by the ROM
+        required: true
+        default: 4.19.318-4.5-iusmac-Mi8937v2-Mi8917
+  push:
+    branches:
+      - riva-docker-kernel
+    paths:
+      - .github/workflows/build-riva-docker-kernel.yml
+      - android-riva-docker-kernel-20260529-222711/**
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout AIESP build inputs
+        uses: actions/checkout@v4
+
+      - name: Build kernel
+        env:
+          KERNEL_REPO: ${{ inputs.kernel_repo || 'https://github.com/crdroidandroid/android_kernel_xiaomi_rova.git' }}
+          KERNEL_REF: ${{ inputs.kernel_ref || '14.0' }}
+          DEFCONFIG: ${{ inputs.defconfig || 'vendor/msm8937-perf_defconfig' }}
+          BASE_CONFIG: android-riva-docker-kernel-20260529-222711/current.config
+          TOOLCHAIN: ${{ inputs.toolchain || 'clang' }}
+          KERNEL_RELEASE: ${{ inputs.kernel_release || '4.19.318-4.5-iusmac-Mi8937v2-Mi8917' }}
+        run: |
+          chmod +x android-riva-docker-kernel-20260529-222711/scripts/build-riva-docker-kernel.sh
+          android-riva-docker-kernel-20260529-222711/scripts/build-riva-docker-kernel.sh
+
+      - name: Upload kernel artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: riva-docker-kernel
+          path: android-riva-docker-kernel-20260529-222711/artifacts/*
+          if-no-files-found: error
