@@ -68,6 +68,26 @@ def put(args):
         client.close()
 
 
+def exec_script(args):
+    client = connect(args)
+    try:
+        with open(args.local, "rb") as f:
+            script = f.read()
+        stdin, stdout, stderr = client.exec_command(args.command)
+        stdin.write(script)
+        stdin.close()
+        out = stdout.read().decode("utf-8", "replace")
+        err = stderr.read().decode("utf-8", "replace")
+        code = stdout.channel.recv_exit_status()
+        if out:
+            print(out, end="")
+        if err:
+            print(err, end="", file=sys.stderr)
+        return code
+    finally:
+        client.close()
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default=DEFAULT_HOST)
@@ -89,6 +109,11 @@ def main():
     p_put.add_argument("local")
     p_put.add_argument("remote")
     p_put.set_defaults(func=put)
+
+    p_exec = sub.add_parser("exec")
+    p_exec.add_argument("local")
+    p_exec.add_argument("command", nargs="?", default="sh -s")
+    p_exec.set_defaults(func=exec_script)
 
     args = parser.parse_args()
     raise SystemExit(args.func(args))
