@@ -86,7 +86,17 @@ log "Pin kernel release metadata"
 "$SRC_DIR/scripts/config" --file "$OUT_DIR/.config" \
   --set-str LOCALVERSION "$LOCALVERSION" \
   --disable LOCALVERSION_AUTO \
-  --disable FHANDLE
+  --disable FHANDLE \
+  --disable USER_NS \
+  --disable CGROUP_PERF \
+  --disable CGROUP_NET_PRIO \
+  --disable CGROUP_NET_CLASSID \
+  --disable CGROUP_HUGETLB \
+  --disable IP_VS \
+  --disable NETFILTER_XT_MATCH_IPVS \
+  --disable DM_THIN_PROVISIONING \
+  --disable DM_SNAPSHOT \
+  --disable DM_MIRROR
 make "${MAKE_ARGS[@]}" olddefconfig
 
 log "Build kernel image and dtbs"
