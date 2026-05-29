@@ -185,6 +185,8 @@ log "Pin release metadata and Docker options"
   --disable MTK_CAMERA_ISP_CAMERA_SUPPORT \
   --disable MTK_LCM \
   --disable MTK_ROUND_CORNER_SUPPORT \
+  --disable MTK_MMPROFILE_SUPPORT \
+  --disable MMPROFILE \
   --disable FHANDLE
 
 make "${MAKE_ARGS[@]}" olddefconfig
