@@ -76,7 +76,7 @@ else
 fi
 
 log "Run olddefconfig"
-yes "" | make "${MAKE_ARGS[@]}" olddefconfig
+make "${MAKE_ARGS[@]}" olddefconfig
 
 log "Build kernel image and dtbs"
 make -j"$JOBS" "${MAKE_ARGS[@]}" Image.gz-dtb dtbs
