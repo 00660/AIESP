@@ -115,6 +115,13 @@ include = "#include <linux/sched/clock.h>\n"
 if include not in text:
     text = text.replace("#include <linux/sched.h>\n", "#include <linux/sched.h>\n" + include, 1)
 devapc.write_text(text)
+
+for makefile in (src / "drivers/misc/mediatek").rglob("Makefile"):
+    text = makefile.read_text()
+    if "fmradio" not in text:
+        continue
+    lines = [line for line in text.splitlines() if "fmradio" not in line]
+    makefile.write_text("\n".join(lines) + "\n")
 PY
 }
 
@@ -175,6 +182,7 @@ log "Pin release metadata and Docker options"
   --disable MTK_COMBO_GPS \
   --disable MTK_GPS_SUPPORT \
   --disable MTK_GPS_EMI \
+  --disable MTK_FMRADIO \
   --disable MTK_IMGSENSOR \
   --disable MTK_LENS \
   --disable MTK_CAM_CAL \
