@@ -3,9 +3,9 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORK_DIR="${WORK_DIR:-$ROOT_DIR/work}"
-KERNEL_REPO="${KERNEL_REPO:-https://github.com/LineageOS/android_kernel_xiaomi_msm8937.git}"
-KERNEL_REF="${KERNEL_REF:-lineage-19.1}"
-DEFCONFIG="${DEFCONFIG:-msm8937-perf_defconfig}"
+KERNEL_REPO="${KERNEL_REPO:-https://github.com/hsx02/kernel_xiaomi_sdm439.git}"
+KERNEL_REF="${KERNEL_REF:-a12/main}"
+DEFCONFIG="${DEFCONFIG:-pine-perf_defconfig}"
 ARCH="${ARCH:-arm64}"
 BASE_CONFIG="${BASE_CONFIG:-}"
 FRAGMENT="${FRAGMENT:-$ROOT_DIR/config/docker-required.fragment}"

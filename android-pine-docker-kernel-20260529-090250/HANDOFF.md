@@ -6,6 +6,7 @@
 - ADB endpoint used: `192.168.2.103:38657`
 - Current kernel observed from device: `4.9.297-perf/pine-g3ce83b96c7ea`
 - Current Android userspace: Android 12 / SDK 31
+- ROM identified from device properties: `PixelExtended_pine-12.0-20220227-0902-OFFICIAL`
 - Boot partition observed: `/dev/block/by-name/boot -> /dev/block/mmcblk0p52`
 - User stated recovery backup of the kernel already exists for rollback.
 
@@ -27,16 +28,16 @@
 
 The Windows checkout of Xiaomi official `MiCode/Xiaomi_Kernel_OpenSource` fails because the tree contains Windows-reserved paths such as `drivers/gpu/drm/nouveau/nvkm/subdev/i2c/aux.c`. The build is therefore delegated to GitHub Actions Linux runners.
 
-Default source in the workflow is:
+Default source in the workflow is the PixelExtended/XDA kernel source for this ROM family:
 
 ```text
-https://github.com/LineageOS/android_kernel_xiaomi_msm8937.git
-branch: lineage-19.1
-defconfig: msm8937-perf_defconfig
+https://github.com/hsx02/kernel_xiaomi_sdm439.git
+branch: a12/main
+defconfig: pine-perf_defconfig
 arch: arm64
 ```
 
-The script defaults to the selected kernel branch's `msm8937-perf_defconfig`, merges Docker-required options, runs `olddefconfig`, then builds `Image.gz-dtb` and `dtbs`. To force the device config, run with `BASE_CONFIG=android-pine-docker-kernel-20260529-090250/current.config`.
+The script defaults to the selected kernel branch's `pine-perf_defconfig`, merges Docker-required options, runs `olddefconfig`, then builds `Image.gz-dtb` and `dtbs`. To force the device config, run with `BASE_CONFIG=android-pine-docker-kernel-20260529-090250/current.config`.
 
 ## Expected artifacts
 
