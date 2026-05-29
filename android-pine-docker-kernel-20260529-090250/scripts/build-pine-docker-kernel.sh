@@ -7,7 +7,7 @@ KERNEL_REPO="${KERNEL_REPO:-https://github.com/hsx02/kernel_xiaomi_sdm439.git}"
 KERNEL_REF="${KERNEL_REF:-a12/main}"
 DEFCONFIG="${DEFCONFIG:-pine-perf_defconfig}"
 ARCH="${ARCH:-arm64}"
-BASE_CONFIG="${BASE_CONFIG:-}"
+BASE_CONFIG="${BASE_CONFIG-$ROOT_DIR/current.config}"
 FRAGMENT="${FRAGMENT:-$ROOT_DIR/config/docker-required.fragment}"
 OUT_DIR="${OUT_DIR:-$WORK_DIR/out}"
 SRC_DIR="${SRC_DIR:-$WORK_DIR/kernel}"
@@ -85,6 +85,8 @@ make "${MAKE_ARGS[@]}" olddefconfig
 log "Pin kernel release metadata"
 "$SRC_DIR/scripts/config" --file "$OUT_DIR/.config" \
   --set-str LOCALVERSION "$LOCALVERSION" \
+  --enable IKCONFIG \
+  --enable IKCONFIG_PROC \
   --disable LOCALVERSION_AUTO \
   --disable FHANDLE \
   --disable USER_NS \

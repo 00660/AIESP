@@ -48,6 +48,7 @@ jobs:
           KERNEL_REPO: ${{ inputs.kernel_repo || 'https://github.com/hsx02/kernel_xiaomi_sdm439.git' }}
           KERNEL_REF: ${{ inputs.kernel_ref || 'a12/main' }}
           DEFCONFIG: ${{ inputs.defconfig || 'pine-perf_defconfig' }}
+          BASE_CONFIG: android-pine-docker-kernel-20260529-090250/current.config
           TOOLCHAIN: ${{ inputs.toolchain || 'clang' }}
           KERNEL_RELEASE: ${{ inputs.kernel_release || '4.9.297-perf/pine-g3ce83b96c7ea' }}
         run: |

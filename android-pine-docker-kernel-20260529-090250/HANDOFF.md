@@ -37,7 +37,7 @@ defconfig: pine-perf_defconfig
 arch: arm64
 ```
 
-The script defaults to the selected kernel branch's `pine-perf_defconfig`, merges Docker-required options, runs `olddefconfig`, then builds `Image.gz-dtb` and `dtbs`. To force the device config, run with `BASE_CONFIG=android-pine-docker-kernel-20260529-090250/current.config`.
+The script defaults to the device-exported `current.config`, merges Docker-required options, runs `olddefconfig`, then builds `Image.gz-dtb` and `dtbs`. This keeps the ROM's boot-tested kernel config as the baseline. To fall back to the selected kernel branch's `pine-perf_defconfig`, run with `BASE_CONFIG=` and `DEFCONFIG=pine-perf_defconfig`.
 
 ## Expected artifacts
 
@@ -64,3 +64,4 @@ The result is a kernel image, not a flashable boot image yet. Repacking requires
 - Seventh GitHub Actions run `26613620370` succeeded after switching to `https://github.com/hsx02/kernel_xiaomi_sdm439.git`, branch `a12/main`, defconfig `pine-perf_defconfig`.
 - Successful artifact: `pine-docker-kernel`, about 27 MB, created `2026-05-29T02:17:25Z`, expires `2026-08-27T02:05:03Z`.
 - Local debug backups and downloaded run logs created during setup were removed per project preference; do not create more local backups/log dumps for this kernel debug flow.
+- The Android 12 "internal problem with your device" dialog is triggered by `ActivityTaskManagerService` after `Build.isBuildConsistent()` fails. On this Treble ROM that path calls `VintfObject.verifyWithoutAvb()`, which checks runtime kernel config against framework VINTF matrices. The local Android 12 `compatibility_matrix.3.xml` for kernel `4.9.84` requires `CONFIG_FHANDLE=n`; `boot-docker-pinned.img` had `CONFIG_FHANDLE=y`, so it can boot but fail VINTF. The next build should use `current.config` as the baseline and force `CONFIG_FHANDLE` off.
