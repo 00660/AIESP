@@ -101,6 +101,13 @@ new = "void aee_zap_locks(void)\n{\n}\n"
 if old in text:
     text = text.replace(old, new, 1)
 mrdump.write_text(text)
+
+mrdump_makefile = src / "drivers/misc/mediatek/aee/mrdump/Makefile"
+text = mrdump_makefile.read_text()
+flag = "ccflags-y += -Wno-unused-variable\n"
+if flag not in text:
+    text = text.replace("ccflags-y += -DTEXT_OFFSET=$(TEXT_OFFSET)\n", "ccflags-y += -DTEXT_OFFSET=$(TEXT_OFFSET)\n" + flag, 1)
+mrdump_makefile.write_text(text)
 PY
 }
 
