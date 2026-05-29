@@ -13,6 +13,8 @@ OUT_DIR="${OUT_DIR:-$WORK_DIR/out}"
 SRC_DIR="${SRC_DIR:-$WORK_DIR/kernel}"
 JOBS="${JOBS:-$(nproc)}"
 TOOLCHAIN="${TOOLCHAIN:-clang}"
+KERNEL_RELEASE="${KERNEL_RELEASE:-4.9.297-perf/pine-g3ce83b96c7ea}"
+LOCALVERSION="${LOCALVERSION:--perf/pine}"
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -80,13 +82,20 @@ fi
 log "Run olddefconfig"
 make "${MAKE_ARGS[@]}" olddefconfig
 
+log "Pin kernel release metadata"
+"$SRC_DIR/scripts/config" --file "$OUT_DIR/.config" \
+  --set-str LOCALVERSION "$LOCALVERSION" \
+  --disable LOCALVERSION_AUTO
+make "${MAKE_ARGS[@]}" olddefconfig
+
 log "Build kernel image and dtbs"
-make -j"$JOBS" "${MAKE_ARGS[@]}" Image.gz-dtb dtbs
+make -j"$JOBS" "${MAKE_ARGS[@]}" KERNELRELEASE="$KERNEL_RELEASE" Image.gz-dtb dtbs
 
 ARTIFACT_DIR="$ROOT_DIR/artifacts"
 mkdir -p "$ARTIFACT_DIR"
 
 cp -f "$OUT_DIR/.config" "$ARTIFACT_DIR/config-docker-final"
+printf '%s\n' "$KERNEL_RELEASE" > "$ARTIFACT_DIR/kernel-release"
 cp -f "$OUT_DIR/arch/$ARCH/boot/Image.gz" "$ARTIFACT_DIR/Image.gz" 2>/dev/null || true
 cp -f "$OUT_DIR/arch/$ARCH/boot/Image.gz-dtb" "$ARTIFACT_DIR/Image.gz-dtb" 2>/dev/null || true
 

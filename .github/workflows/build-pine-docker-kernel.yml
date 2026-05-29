@@ -23,6 +23,10 @@ on:
         options:
           - clang
           - gcc
+      kernel_release:
+        description: Kernel release string expected by the ROM VINTF check
+        required: true
+        default: 4.9.297-perf/pine-g3ce83b96c7ea
   push:
     branches:
       - pine-docker-kernel
@@ -45,6 +49,7 @@ jobs:
           KERNEL_REF: ${{ inputs.kernel_ref || 'a12/main' }}
           DEFCONFIG: ${{ inputs.defconfig || 'pine-perf_defconfig' }}
           TOOLCHAIN: ${{ inputs.toolchain || 'clang' }}
+          KERNEL_RELEASE: ${{ inputs.kernel_release || '4.9.297-perf/pine-g3ce83b96c7ea' }}
         run: |
           chmod +x android-pine-docker-kernel-20260529-090250/scripts/build-pine-docker-kernel.sh
           android-pine-docker-kernel-20260529-090250/scripts/build-pine-docker-kernel.sh
