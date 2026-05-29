@@ -85,6 +85,14 @@ module = src / "kernel/module.c"
 text = module.read_text()
 text = text.replace("mod->sect_attrs->attrs[i].name", "mod->sect_attrs->attrs[i].battr.attr.name")
 module.write_text(text)
+
+cpumask = src / "include/linux/cpumask.h"
+text = cpumask.read_text()
+old = "#if NR_CPUS <= BITS_PER_LONG\n\t*cpumask_bits(dstp) = BIT(NR_CPUS) - 1;\n#else\n"
+new = "#if NR_CPUS < BITS_PER_LONG\n\t*cpumask_bits(dstp) = BIT(NR_CPUS) - 1;\n#else\n"
+if old not in text:
+    raise SystemExit("expected cpumask_setall BIT pattern not found")
+cpumask.write_text(text.replace(old, new, 1))
 PY
 }
 
@@ -141,6 +149,7 @@ log "Pin release metadata and Docker options"
   --enable IP_NF_TARGET_MASQUERADE \
   --enable IP_NF_TARGET_REDIRECT \
   --enable OVERLAY_FS \
+  --disable DRM_VIRTIO_GPU \
   --disable FHANDLE
 
 make "${MAKE_ARGS[@]}" olddefconfig
