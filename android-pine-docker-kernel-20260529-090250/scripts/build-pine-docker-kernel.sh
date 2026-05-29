@@ -85,7 +85,8 @@ make "${MAKE_ARGS[@]}" olddefconfig
 log "Pin kernel release metadata"
 "$SRC_DIR/scripts/config" --file "$OUT_DIR/.config" \
   --set-str LOCALVERSION "$LOCALVERSION" \
-  --disable LOCALVERSION_AUTO
+  --disable LOCALVERSION_AUTO \
+  --disable FHANDLE
 make "${MAKE_ARGS[@]}" olddefconfig
 
 log "Build kernel image and dtbs"

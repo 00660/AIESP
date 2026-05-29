@@ -1,5 +1,7 @@
 # Docker/container runtime support for Xiaomi pine / msm8937 Android kernels.
-CONFIG_FHANDLE=y
+# Android 12 VINTF for this 4.9 pine build requires CONFIG_FHANDLE=n.
+# Keep this unset to avoid the "internal problem with your device" warning.
+# CONFIG_FHANDLE is not set
 CONFIG_POSIX_MQUEUE=y
 CONFIG_DEVPTS_MULTIPLE_INSTANCES=y
 
