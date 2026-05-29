@@ -60,4 +60,7 @@ The result is a kernel image, not a flashable boot image yet. Repacking requires
 - Third GitHub Actions run `26612499711` failed because `CLANG_PREFIX32=arm-linux-gnueabi-` was interpreted by clang as a file path.
 - Fourth GitHub Actions run `26612631168` still selected host `/usr/bin/as` with `CLANG_PREFIX32=-B/usr/bin/`, so the script now uses the full binutils prefix `-B/usr/bin/arm-linux-gnueabi-`.
 - Fifth GitHub Actions run `26612755663` passed the vdso32 toolchain stage but failed in `drivers/media/platform/msm/camera_v2` with `enum v4l2_mbus_pixelcode`, indicating the pulled device `current.config` does not match the selected Lineage kernel branch headers. The script now defaults to the branch defconfig and only uses `current.config` when `BASE_CONFIG` is explicitly set.
+- Sixth GitHub Actions run `26613157486` still used the Lineage source and failed; the device was then identified as `PixelExtended_pine-12.0-20220227-0902-OFFICIAL`.
+- Seventh GitHub Actions run `26613620370` succeeded after switching to `https://github.com/hsx02/kernel_xiaomi_sdm439.git`, branch `a12/main`, defconfig `pine-perf_defconfig`.
+- Successful artifact: `pine-docker-kernel`, about 27 MB, created `2026-05-29T02:17:25Z`, expires `2026-08-27T02:05:03Z`.
 - Local debug backups and downloaded run logs created during setup were removed per project preference; do not create more local backups/log dumps for this kernel debug flow.
