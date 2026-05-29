@@ -55,3 +55,4 @@ The result is a kernel image, not a flashable boot image yet. Repacking requires
 - Magisk exists, but normal `su` is not in `PATH`; observed root entry is `/debug_ramdisk/su`.
 - Before flashing a repacked boot image, verify the final config with Docker's `check-config.sh` or `dockerd --debug` on-device.
 - First GitHub Actions run `26612148198` failed because `yes "" | make olddefconfig` trips `set -o pipefail` after `olddefconfig` exits. The script now calls `make olddefconfig` directly.
+- Second GitHub Actions run `26612323135` failed in `arch/arm64/kernel/vdso32` because clang used host `/usr/bin/as`, which does not accept ARM `-EL`. The script now passes `CLANG_PREFIX32=arm-linux-gnueabi-` and `CLANG_GCC32_TC=--gcc-toolchain=/usr`.
