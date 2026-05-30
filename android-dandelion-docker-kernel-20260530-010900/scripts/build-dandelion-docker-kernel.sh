@@ -232,6 +232,13 @@ if "static DECLARE_RWSEM(shrinker_rwsem);" not in text and "static DEFINE_RWSEM(
 
 sched = src / "kernel/sched/sched.h"
 text = sched.read_text()
+old = "#define BW_UNIT\t\t\t(1 << BW_SHIFT)\n#define RATIO_SHIFT\t\t8\n"
+new = "#define BW_UNIT\t\t\t(1 << BW_SHIFT)\n#define RATIO_SHIFT\t\t8\n#define MAX_BW_BITS\t\t(64 - BW_SHIFT)\n#define MAX_BW\t\t\t((1ULL << MAX_BW_BITS) - 1)\n"
+if old in text and "#define MAX_BW" not in text:
+    text = text.replace(old, new, 1)
+elif "#define MAX_BW" not in text:
+    raise SystemExit("expected BW_UNIT pattern not found")
+
 old = "static inline void check_for_migration(struct rq *rq, struct task_struct *p) { }\n\nstatic inline int sched_boost(void)"
 new = "#ifndef CONFIG_MTK_SCHED_BIG_TASK_MIGRATE\nstatic inline void check_for_migration(struct rq *rq, struct task_struct *p) { }\n#endif\n\nstatic inline int sched_boost(void)"
 if old in text:
@@ -253,6 +260,16 @@ if old in text:
 elif new not in text:
     raise SystemExit("expected is_reserved fallback pattern not found")
 sched.write_text(text)
+
+core = src / "kernel/sched/core.c"
+text = core.read_text()
+old = "const u64 min_cfs_quota_period = 1 * NSEC_PER_MSEC; /* 1ms */\n\nstatic int __cfs_schedulable"
+new = "const u64 min_cfs_quota_period = 1 * NSEC_PER_MSEC; /* 1ms */\n/* More than 203 days if BW_SHIFT equals 20. */\nstatic const u64 max_cfs_runtime = MAX_BW * NSEC_PER_USEC;\n\nstatic int __cfs_schedulable"
+if old in text and "static const u64 max_cfs_runtime" not in text:
+    text = text.replace(old, new, 1)
+elif "static const u64 max_cfs_runtime" not in text:
+    raise SystemExit("expected CFS quota period pattern not found")
+core.write_text(text)
 
 for rel in ("kernel/Makefile", "mm/Makefile"):
     makefile = src / rel

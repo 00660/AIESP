@@ -1,6 +1,6 @@
 # 89 AlphaDroid Docker kernel handoff
 
-更新时间：2026-05-30 10:26
+更新时间：2026-05-30 10:36
 
 ## 当前结论
 
@@ -49,6 +49,8 @@
 - `HANDOFF.md.bak-20260530-100559-ubuntu2404`
 - `scripts/build-dandelion-docker-kernel.sh.bak-20260530-102113-kknx-compile-fixes`
 - `HANDOFF.md.bak-20260530-102113-kknx-compile-fixes`
+- `scripts/build-dandelion-docker-kernel.sh.bak-20260530-103533-cfs-runtime`
+- `HANDOFF.md.bak-20260530-103533-cfs-runtime`
 
 ## 脚本状态
 
@@ -64,6 +66,7 @@
 - `OUT_DIR` 默认对齐为 KKNX `clang.sh` 的源码内 `out`，artifact 仍只收集 `Image.gz`、`config-docker-final`、`kernel-release`。
 - 最新失败日志里的 `cpuset_write_resmask_assist` 已补 `CONFIG_CPUSET_ASSIST` 条件保护；`kernel/Makefile` 和 `mm/Makefile` 的子目录 `ccflags-y += -mllvm ...` 已在构建时移除，避免和全局 LLVM 参数重复或不兼容。
 - 2026-05-30 10:26 起，按 run `26671667343` 日志补 KKNX 编译兼容项：`mm/vmscan.c` 增加 `shrinker_rwsem` 声明；`kernel/sched/sched.h` 在 `CONFIG_MTK_SCHED_BIG_TASK_MIGRATE=y` 时避免 WALT fallback 与 `eas_plus.h` extern 冲突；`CONFIG_FRAME_WARN` 调整为 `8192` 以绕过 `fs/d_path.c:getcwd` 的 clang 栈帧 Werror。
+- 2026-05-30 10:36 起，按 run `26671990647` 日志和 Linux 5.10/5.15 上游 CFS bandwidth 写法补 `MAX_BW_BITS`、`MAX_BW` 与 `max_cfs_runtime`，用于支持 `CONFIG_CFS_BANDWIDTH=y`。
 - 旧 `niigo` 兼容补丁默认不执行，只有显式设置 `APPLY_LEGACY_NIIGO_PATCHES=1` 才会执行。
 - 已移除默认 `MTK_*`、`MTK_LCM`、camera、GPS、display 相关禁用项，只保留 Docker 需要的内核配置补项和当前已禁用的 `FHANDLE` 策略。
 
@@ -109,4 +112,5 @@
 - 2026-05-30 run `26671030079` 失败点已确认：Neutron clang 固定下载和 SHA 校验通过，但 `snapshots.linaro.org` 下载 aarch64 Linaro 工具链超时，导致 `tar` 收到空输入。
 - 2026-05-30 run `26671399589` 走到了 `olddefconfig`，失败点为 Neutron clang 需要 `GLIBC_2.36`，而 `ubuntu-22.04` runner 只有 glibc 2.35。
 - 2026-05-30 run `26671667343` 已进入正式编译，失败点为 `mm/vmscan.c` 缺 `shrinker_rwsem`、`kernel/sched/sched.h` 与 `eas_plus.h` 的 WALT fallback 声明冲突，以及 `fs/d_path.c` 在 `CONFIG_FRAME_WARN=2800` 下被 `-Wframe-larger-than` 当作错误。
-- 2026-05-30 10:26 本地已补上述 KKNX 编译兼容项，等待重新触发 GitHub Actions 验证。
+- 2026-05-30 run `26671990647` 前述错误已通过，新的失败点为 `CONFIG_CFS_BANDWIDTH=y` 后 `kernel/sched/core.c` 引用未定义的 `max_cfs_runtime`。
+- 2026-05-30 10:36 本地已按上游 CFS bandwidth 写法补 `MAX_BW_BITS`、`MAX_BW` 和 `max_cfs_runtime`，等待重新触发 GitHub Actions 验证。
