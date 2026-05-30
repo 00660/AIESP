@@ -312,6 +312,71 @@ elif new not in text:
     raise SystemExit("expected sched debug first entity assignment not found")
 debug.write_text(text)
 
+module = src / "kernel/module.c"
+text = module.read_text()
+old = "mod->sect_attrs->attrs[i].name"
+new = "mod->sect_attrs->attrs[i].battr.attr.name"
+if old in text:
+    text = text.replace(old, new)
+elif new not in text:
+    raise SystemExit("expected module section attr name pattern not found")
+module.write_text(text)
+
+binder = src / "drivers/android/binder.c"
+text = binder.read_text()
+old = "#ifdef CONFIG_ANDROID_BINDER_LOGS\n\tstruct binder_transaction_log_entry *e;\n#endif\n"
+new = "#if defined(CONFIG_ANDROID_BINDER_LOGS) || defined(CONFIG_ANDROID_BINDER_USER_TRACKING)\n\tstruct binder_transaction_log_entry *e;\n#endif\n"
+if old in text:
+    text = text.replace(old, new, 1)
+elif new not in text:
+    raise SystemExit("expected binder transaction log declaration pattern not found")
+
+old = """#ifdef CONFIG_ANDROID_BINDER_LOGS
+\te = binder_transaction_log_add(&binder_transaction_log);
+\te->debug_id = t_debug_id;
+\te->call_type = reply ? 2 : !!(tr->flags & TF_ONE_WAY);
+\te->from_proc = proc->pid;
+\te->from_thread = thread->pid;
+\te->target_handle = tr->target.handle;
+\te->data_size = tr->data_size;
+\te->offsets_size = tr->offsets_size;
+\te->context_name = proc->context->name;
+#ifdef CONFIG_ANDROID_BINDER_USER_TRACKING
+\tktime_get_ts(&e->timestamp);
+\t/* monotonic_to_bootbased(&e->timestamp); */
+\tdo_gettimeofday(&e->tv);
+\t/* consider time zone. translate to android time */
+\te->tv.tv_sec -= (sys_tz.tz_minuteswest * 60);
+#endif
+#endif
+"""
+new = """#if defined(CONFIG_ANDROID_BINDER_LOGS) || defined(CONFIG_ANDROID_BINDER_USER_TRACKING)
+\te = binder_transaction_log_add(&binder_transaction_log);
+#ifdef CONFIG_ANDROID_BINDER_LOGS
+\te->debug_id = t_debug_id;
+\te->call_type = reply ? 2 : !!(tr->flags & TF_ONE_WAY);
+\te->from_proc = proc->pid;
+\te->from_thread = thread->pid;
+\te->target_handle = tr->target.handle;
+\te->data_size = tr->data_size;
+\te->offsets_size = tr->offsets_size;
+\te->context_name = proc->context->name;
+#endif
+#ifdef CONFIG_ANDROID_BINDER_USER_TRACKING
+\tktime_get_ts(&e->timestamp);
+\t/* monotonic_to_bootbased(&e->timestamp); */
+\tdo_gettimeofday(&e->tv);
+\t/* consider time zone. translate to android time */
+\te->tv.tv_sec -= (sys_tz.tz_minuteswest * 60);
+#endif
+#endif
+"""
+if old in text:
+    text = text.replace(old, new, 1)
+elif new not in text:
+    raise SystemExit("expected binder transaction log init pattern not found")
+binder.write_text(text)
+
 for rel in ("kernel/Makefile", "mm/Makefile"):
     makefile = src / rel
     text = makefile.read_text()

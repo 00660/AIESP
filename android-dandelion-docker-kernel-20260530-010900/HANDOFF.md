@@ -1,6 +1,6 @@
 # 89 AlphaDroid Docker kernel handoff
 
-更新时间：2026-05-30 10:59
+更新时间：2026-05-30 11:26
 
 ## 当前结论
 
@@ -55,6 +55,10 @@
 - `HANDOFF.md.bak-20260530-104939-fair-compile`
 - `scripts/build-dandelion-docker-kernel.sh.bak-20260530-105905-sched-debug`
 - `HANDOFF.md.bak-20260530-105905-sched-debug`
+- `scripts/build-dandelion-docker-kernel.sh.bak-20260530-111109-binder-module`
+- `HANDOFF.md.bak-20260530-111109-binder-module`
+- `scripts/build-dandelion-docker-kernel.sh.bak-20260530-112611-binder-module`
+- `HANDOFF.md.bak-20260530-112611-binder-module`
 
 ## 脚本状态
 
@@ -73,6 +77,7 @@
 - 2026-05-30 10:36 起，按 run `26671990647` 日志和 Linux 5.10/5.15 上游 CFS bandwidth 写法补 `MAX_BW_BITS`、`MAX_BW` 与 `max_cfs_runtime`，用于支持 `CONFIG_CFS_BANDWIDTH=y`。
 - 2026-05-30 10:50 起，按 run `26672186420` 日志修 `kernel/sched/fair.c` 中 `CONFIG_MTK_SCHED_INTEROP` 两处错误累加目标；同时显式关闭非 Docker 必需且当前运行配置没有的 `CONFIG_SCHED_BORE`，避免 KKNX 默认开启未完整实现的 BORE helper。
 - 2026-05-30 10:59 起，按 run `26672473142` 日志修 `kernel/sched/debug.c`：去掉对 `fair.c` 私有 inline `cfs_rq_of()` 的调试输出依赖，并修正 `irst`/`first` 变量 typo。
+- 2026-05-30 11:26 起，按 run `26672678565` 日志修 KKNX 默认编译路径：`kernel/module.c` 改用 `module_sect_attr.battr.attr.name` 访问 section 名；`drivers/android/binder.c` 在 `CONFIG_ANDROID_BINDER_USER_TRACKING=y` 但 `CONFIG_ANDROID_BINDER_LOGS` 未启用时也创建 `binder_transaction_log_entry`，避免 `e` 未声明。
 - 旧 `niigo` 兼容补丁默认不执行，只有显式设置 `APPLY_LEGACY_NIIGO_PATCHES=1` 才会执行。
 - 已移除默认 `MTK_*`、`MTK_LCM`、camera、GPS、display 相关禁用项，只保留 Docker 需要的内核配置补项和当前已禁用的 `FHANDLE` 策略。
 
@@ -121,4 +126,5 @@
 - 2026-05-30 run `26671990647` 前述错误已通过，新的失败点为 `CONFIG_CFS_BANDWIDTH=y` 后 `kernel/sched/core.c` 引用未定义的 `max_cfs_runtime`。
 - 2026-05-30 run `26672186420` 前述错误已通过，新的失败点为 `kernel/sched/fair.c` 的 `update_burst_penalty`/`restart_burst` 未声明，以及 `CONFIG_MTK_SCHED_INTEROP` 下 `load`/`wl` 未定义。
 - 2026-05-30 run `26672473142` 前述错误已通过，新的失败点为 `kernel/sched/debug.c` 的 `entity_eligible(cfs_rq_of(...))` 和 `irst`/`first` typo。
-- 2026-05-30 10:59 本地已修 `debug.c` 调试输出依赖和 typo，等待重新触发 GitHub Actions 验证。
+- 2026-05-30 run `26672678565` 前述错误已通过，新的失败点为 `drivers/android/binder.c` 的 `e` 未声明，以及 `kernel/module.c` 的 `struct module_sect_attr` 没有 `name` 成员。
+- 2026-05-30 11:26 本地已修 binder user tracking 日志条目和 module section name 访问，等待重新触发 GitHub Actions 验证。
