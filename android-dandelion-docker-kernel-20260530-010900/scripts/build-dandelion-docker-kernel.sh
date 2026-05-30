@@ -288,6 +288,30 @@ elif new not in text:
     raise SystemExit("expected find_busiest_queue MTK interop pattern not found")
 fair.write_text(text)
 
+debug = src / "kernel/sched/debug.c"
+text = debug.read_text()
+old = "\t\tSPLIT_NS(p->se.vruntime),\n\t\tentity_eligible(cfs_rq_of(&p->se), &p->se) ? 'E' : 'N',\n\t\tSPLIT_NS(p->se.deadline),"
+new = "\t\tSPLIT_NS(p->se.vruntime),\n\t\tp->se.on_rq ? 'E' : 'N',\n\t\tSPLIT_NS(p->se.deadline),"
+if old in text:
+    text = text.replace(old, new, 1)
+elif new not in text:
+    raise SystemExit("expected sched debug eligibility pattern not found")
+
+old = "\tstruct sched_entity *last;\n"
+new = "\tstruct sched_entity *first, *last;\n"
+if old in text:
+    text = text.replace(old, new, 1)
+elif new not in text:
+    raise SystemExit("expected sched debug first entity declaration not found")
+
+old = "\tirst = __pick_first_entity(cfs_rq);\n"
+new = "\tfirst = __pick_first_entity(cfs_rq);\n"
+if old in text:
+    text = text.replace(old, new, 1)
+elif new not in text:
+    raise SystemExit("expected sched debug first entity assignment not found")
+debug.write_text(text)
+
 for rel in ("kernel/Makefile", "mm/Makefile"):
     makefile = src / rel
     text = makefile.read_text()
