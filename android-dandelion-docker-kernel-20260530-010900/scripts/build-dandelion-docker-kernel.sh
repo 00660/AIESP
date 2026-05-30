@@ -483,6 +483,45 @@ elif new not in text:
     raise SystemExit("expected GED perf trace printk pattern not found")
 ged_log.write_text(text)
 
+mmprofile = src / "drivers/misc/mediatek/mmp/src/mmprofile.c"
+text = mmprofile.read_text()
+old = """#ifdef CONFIG_TRACING
+
+#define ENABLE_MMP_TRACING
+#ifdef ENABLE_MMP_TRACING
+#define MMP_TRACING
+#endif
+
+#endif /* CONFIG_TRACING */
+"""
+new = """#if defined(CONFIG_TRACING) && defined(CONFIG_TRACE_PRINTK)
+
+#define ENABLE_MMP_TRACING
+#ifdef ENABLE_MMP_TRACING
+#define MMP_TRACING
+#endif
+
+#endif /* CONFIG_TRACING && CONFIG_TRACE_PRINTK */
+"""
+if old in text:
+    text = text.replace(old, new, 1)
+elif new not in text:
+    raise SystemExit("expected MMP tracing config guard pattern not found")
+
+old = """/* the MMP_TRACING is defined only when CONFIG_TRACING is defined
+ * and we enable mmp to trace its API.
+ */
+"""
+new = """/* MMP tracing uses event_trace_printk(), whose helpers are only declared
+ * when CONFIG_TRACE_PRINTK is enabled.
+ */
+"""
+if old in text:
+    text = text.replace(old, new, 1)
+elif new not in text:
+    raise SystemExit("expected MMP tracing comment pattern not found")
+mmprofile.write_text(text)
+
 fib_trie = src / "net/ipv4/fib_trie.c"
 text = fib_trie.read_text()
 old = """#ifndef CONFIG_PROC_STRIPPED

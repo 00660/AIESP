@@ -1,6 +1,6 @@
 # 89 AlphaDroid Docker kernel handoff
 
-更新时间：2026-05-30 15:41
+更新时间：2026-05-30 16:02
 
 ## 当前结论
 
@@ -72,6 +72,8 @@
 - `scripts/build-dandelion-docker-kernel.sh.bak-20260530-154124-use-kknx-defconfig`
 - `HANDOFF.md.bak-20260530-154124-use-kknx-defconfig`
 - `.github/workflows/build-dandelion-docker-kernel.yml.bak-20260530-154124-use-kknx-defconfig`
+- `scripts/build-dandelion-docker-kernel.sh.bak-20260530-160209-mmprofile-trace-printk`
+- `HANDOFF.md.bak-20260530-160209-mmprofile-trace-printk`
 
 ## 脚本状态
 
@@ -99,6 +101,7 @@
 - 2026-05-30 15:13 曾短暂加入 `sanitize_custom_hardware_lists`，会剔除源码不存在的硬件目录；该策略已废弃。
 - 2026-05-30 15:41 起，改为 `verify_custom_hardware_lists`：只校验 `CONFIG_CUSTOM_KERNEL_LCM` 和 `CONFIG_CUSTOM_KERNEL_IMGSENSOR` 能否在当前源码树找到对应目录，不再自动删配置项。校验结果输出到 `hardware-list-verify.txt`。
 - 配置根因已确认：workflow 原先把 `BASE_CONFIG` 固定为 89 实机 `current.config`。该文件是 `ARCH_MTK_PROJECT="angelican"`，并包含 `ov_ov02b_*`、`gc_gc02m*`、`ili9882n_vdo_hdp_xinli`、`td4160_vdo_hdp_boe_xinli` 等 angelican/实机硬件列表；KKNX `blossom_stock_defconfig` 是 `ARCH_MTK_PROJECT="dandelion"`，且源码/注册表只完整支持自己的 dandelion 硬件列表。因此直接用整份 `current.config` 覆盖 KKNX 是后续 camera/LCM 编译错误的配置层根因。
+- 2026-05-30 16:02 起，按 run `26678417152` 日志修 MTK MMP tracing 条件：`mmprofile.c` 只有在 `CONFIG_TRACING && CONFIG_TRACE_PRINTK` 时定义 `MMP_TRACING`。原因是 `event_trace_printk()` 宏会展开到 `__trace_printk_check_format`、`__trace_bprintk`、`__trace_printk`，这些声明只在 `CONFIG_TRACE_PRINTK` 下暴露；KKNX defconfig 有 `CONFIG_TRACING=y`，但不启用 `CONFIG_TRACE_PRINTK`。
 - 旧 `niigo` 兼容补丁默认不执行，只有显式设置 `APPLY_LEGACY_NIIGO_PATCHES=1` 才会执行。
 - 已移除默认 `MTK_*`、`MTK_LCM`、camera、GPS、display 相关禁用项，只保留 Docker 需要的内核配置补项和当前已禁用的 `FHANDLE` 策略。
 
@@ -155,4 +158,5 @@
 - 2026-05-30 run `26674178286` 前述 GED 和 fib_trie 语法错误已通过，新的失败点为 `net/ipv4/fib_trie.c` 的 `fib_trie_fops`/`fib_triestat_fops` 不存在；并发还暴露 `gc_gc02m10_ii_Sensor.c` 的 `gc02m10_SENSOR_ID` 未定义。
 - 2026-05-30 run `26674507740` 前述 fib_trie/gc02m10 错误已通过，新的失败点为 `CONFIG_CUSTOM_KERNEL_LCM` 引用 KKNX 源码不存在的 `ili9882n_vdo_hdp_xinli` 目录，以及 `CONFIG_CUSTOM_KERNEL_IMGSENSOR` 引用不存在的 `hynix_hi556_ii` 目录。同步核查发现当前 `current.config` 里还有源码不存在的 `td4160_vdo_hdp_boe_xinli`。
 - 2026-05-30 run `26677832945` 使用短暂的硬件列表过滤后，LCM/hynix 缺目录错误消失，但继续暴露 `ov_ov02b_v` 的 `OV02B_V_SENSOR_ID` 未定义。这证明过滤只是把不匹配配置往后推，不是正确策略。
-- 2026-05-30 15:41 本地已改为 KKNX `blossom_stock_defconfig` 起步，`current.config` 不再默认参与构建，并把硬件列表处理改为只校验不修改，等待重新触发 GitHub Actions 验证。
+- 2026-05-30 run `26678417152` 已证明 KKNX `blossom_stock_defconfig` 的硬件列表校验通过，新的失败点为 `drivers/misc/mediatek/mmp/src/mmprofile.c` 在 `CONFIG_TRACING=y` 但 `CONFIG_TRACE_PRINTK` 未启用时调用 `event_trace_printk()`，导致 `__trace_printk_check_format`、`__trace_bprintk`、`__trace_printk` 未声明。
+- 2026-05-30 16:02 本地已补 MTK MMP tracing 条件，等待重新触发 GitHub Actions 验证。
