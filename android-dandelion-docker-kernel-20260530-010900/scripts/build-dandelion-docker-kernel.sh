@@ -3,9 +3,9 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORK_DIR="${WORK_DIR:-$ROOT_DIR/work}"
-KERNEL_REPO="${KERNEL_REPO:-https://github.com/TelegramAt25/niigo_kernel_xiaomi_blossom.git}"
-KERNEL_REF="${KERNEL_REF:-yoka_rb2}"
-DEFCONFIG="${DEFCONFIG:-stock_defconfig}"
+KERNEL_REPO="${KERNEL_REPO:-https://github.com/danya2271/kuroneko_r_mt6765.git}"
+KERNEL_REF="${KERNEL_REF:-rebase}"
+DEFCONFIG="${DEFCONFIG:-blossom_stock_defconfig}"
 ARCH="${ARCH:-arm64}"
 BASE_CONFIG="${BASE_CONFIG:-$ROOT_DIR/current.config}"
 FRAGMENT="${FRAGMENT:-$ROOT_DIR/config/docker-required.fragment}"
@@ -14,6 +14,7 @@ SRC_DIR="${SRC_DIR:-$WORK_DIR/kernel}"
 JOBS="${JOBS:-$(nproc)}"
 KERNEL_RELEASE="${KERNEL_RELEASE:-4.19.127-perf-g7288046673d5}"
 LOCALVERSION="${LOCALVERSION:--perf}"
+APPLY_LEGACY_NIIGO_PATCHES="${APPLY_LEGACY_NIIGO_PATCHES:-0}"
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -125,7 +126,11 @@ for makefile in (src / "drivers/misc/mediatek").rglob("Makefile"):
 PY
 }
 
-apply_source_patches
+if [[ "$APPLY_LEGACY_NIIGO_PATCHES" == "1" ]]; then
+  apply_source_patches
+else
+  log "Skip legacy niigo source patches"
+fi
 
 log "Prepare base config"
 if [[ -f "$BASE_CONFIG" ]]; then
@@ -178,23 +183,6 @@ log "Pin release metadata and Docker options"
   --enable IP_NF_TARGET_MASQUERADE \
   --enable IP_NF_TARGET_REDIRECT \
   --enable OVERLAY_FS \
-  --disable DRM_VIRTIO_GPU \
-  --disable MTK_COMBO_GPS \
-  --disable MTK_GPS_SUPPORT \
-  --disable MTK_GPS_EMI \
-  --disable MTK_FMRADIO \
-  --disable MTK_IMGSENSOR \
-  --disable MTK_LENS \
-  --disable MTK_CAM_CAL \
-  --disable MTK_FLASHLIGHT \
-  --disable MTK_CAMERA_ISP \
-  --disable MTK_CAMERA_ISP_DPE_SUPPORT \
-  --disable MTK_CAMERA_ISP_FD_SUPPORT \
-  --disable MTK_CAMERA_ISP_CAMERA_SUPPORT \
-  --disable MTK_LCM \
-  --disable MTK_ROUND_CORNER_SUPPORT \
-  --disable MTK_MMPROFILE_SUPPORT \
-  --disable MMPROFILE \
   --disable FHANDLE
 
 make "${MAKE_ARGS[@]}" olddefconfig

@@ -6,15 +6,15 @@ on:
       kernel_repo:
         description: Kernel source repository
         required: true
-        default: https://github.com/TelegramAt25/niigo_kernel_xiaomi_blossom.git
+        default: https://github.com/danya2271/kuroneko_r_mt6765.git
       kernel_ref:
         description: Kernel source branch/tag/ref
         required: true
-        default: yoka_rb2
+        default: rebase
       defconfig:
         description: Fallback defconfig when current.config is not used
         required: true
-        default: stock_defconfig
+        default: blossom_stock_defconfig
       kernel_release:
         description: Kernel release string expected by the ROM
         required: true
@@ -37,9 +37,9 @@ jobs:
 
       - name: Build kernel
         env:
-          KERNEL_REPO: ${{ inputs.kernel_repo || 'https://github.com/TelegramAt25/niigo_kernel_xiaomi_blossom.git' }}
-          KERNEL_REF: ${{ inputs.kernel_ref || 'yoka_rb2' }}
-          DEFCONFIG: ${{ inputs.defconfig || 'stock_defconfig' }}
+          KERNEL_REPO: ${{ inputs.kernel_repo || 'https://github.com/danya2271/kuroneko_r_mt6765.git' }}
+          KERNEL_REF: ${{ inputs.kernel_ref || 'rebase' }}
+          DEFCONFIG: ${{ inputs.defconfig || 'blossom_stock_defconfig' }}
           BASE_CONFIG: android-dandelion-docker-kernel-20260530-010900/current.config
           KERNEL_RELEASE: ${{ inputs.kernel_release || '4.19.127-perf-g7288046673d5' }}
         run: |
