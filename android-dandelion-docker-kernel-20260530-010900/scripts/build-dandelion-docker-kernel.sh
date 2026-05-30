@@ -542,6 +542,95 @@ makefile.write_text("\n".join(lines) + "\n")
 PY
 }
 
+sanitize_custom_hardware_lists() {
+  log "Sanitize custom hardware lists against source tree"
+
+  python3 - "$SRC_DIR" "$OUT_DIR/.config" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+src = Path(sys.argv[1])
+config = Path(sys.argv[2])
+text = config.read_text()
+changed = False
+report = []
+
+
+def get_quoted(name):
+    match = re.search(rf'^{name}="([^"]*)"$', text, re.M)
+    return match.group(1) if match else ""
+
+
+def set_quoted(name, value):
+    global text, changed
+    new_line = f'{name}="{value}"'
+    text, count = re.subn(rf'^{name}="[^"]*"$', new_line, text, count=1, flags=re.M)
+    if count == 0:
+        raise SystemExit(f"expected {name} in .config")
+    changed = True
+
+
+platform = get_quoted("CONFIG_MTK_PLATFORM") or "mt6765"
+project = get_quoted("CONFIG_ARCH_MTK_PROJECT")
+
+
+def filter_list(name, exists_func):
+    items = get_quoted(name).split()
+    if not items:
+        return
+
+    kept = []
+    dropped = []
+    for item in items:
+        if exists_func(item):
+            kept.append(item)
+        else:
+            dropped.append(item)
+
+    if dropped:
+        report.append(f"{name}: dropped missing source dirs: {' '.join(dropped)}")
+        set_quoted(name, " ".join(kept))
+
+
+def lcm_exists(item):
+    return (src / "drivers/misc/mediatek/lcm" / item / "Makefile").exists()
+
+
+def imgsensor_exists(item):
+    roots = [
+        src / "drivers/misc/mediatek/imgsensor/src" / platform / item,
+        src / "drivers/misc/mediatek/imgsensor/src/common/v1" / item,
+    ]
+    if project:
+        roots.insert(
+            0,
+            src
+            / "drivers/misc/mediatek/imgsensor/src"
+            / platform
+            / "camera_project"
+            / project
+            / item,
+        )
+    return any((path / "Makefile").exists() for path in roots)
+
+
+filter_list("CONFIG_CUSTOM_KERNEL_LCM", lcm_exists)
+filter_list("CONFIG_CUSTOM_KERNEL_IMGSENSOR", imgsensor_exists)
+
+if changed:
+    config.write_text(text)
+
+report_path = config.parent / "hardware-list-sanitize.txt"
+if report:
+    report_path.write_text("\n".join(report) + "\n")
+    for line in report:
+        print(line)
+else:
+    report_path.write_text("No missing custom hardware source dirs found.\n")
+PY
+}
+
 apply_kknx_build_fixes
 install_kknx_native_toolchains
 
@@ -563,6 +652,7 @@ log "Merge Docker config fragment"
 
 log "Run olddefconfig"
 run_kknx_make olddefconfig
+sanitize_custom_hardware_lists
 
 log "Pin release metadata and Docker options"
 "$SRC_DIR/scripts/config" --file "$OUT_DIR/.config" \
@@ -594,6 +684,8 @@ log "Pin release metadata and Docker options"
   --disable FHANDLE
 
 run_kknx_make olddefconfig
+sanitize_custom_hardware_lists
+run_kknx_make olddefconfig
 
 log "Build kernel image"
 run_kknx_make "-j$JOBS" KERNELRELEASE="$KERNEL_RELEASE" Image.gz
@@ -604,9 +696,12 @@ mkdir -p "$ARTIFACT_DIR"
 cp -f "$OUT_DIR/.config" "$ARTIFACT_DIR/config-docker-final"
 printf '%s\n' "$KERNEL_RELEASE" > "$ARTIFACT_DIR/kernel-release"
 cp -f "$OUT_DIR/arch/$ARCH/boot/Image.gz" "$ARTIFACT_DIR/Image.gz"
+if [[ -f "$OUT_DIR/hardware-list-sanitize.txt" ]]; then
+  cp -f "$OUT_DIR/hardware-list-sanitize.txt" "$ARTIFACT_DIR/hardware-list-sanitize.txt"
+fi
 
 log "Docker config summary"
-grep -E 'CONFIG_(FRAME_WARN|SCHED_BORE|SYSVIPC|POSIX_MQUEUE|CGROUP_PIDS|CGROUP_DEVICE|CFS_BANDWIDTH|PID_NS|IPC_NS|USER_NS|VETH|MACVLAN|OVERLAY_FS|BRIDGE_NETFILTER|NETFILTER_XT_MATCH_ADDRTYPE|IP_NF_TARGET_MASQUERADE|FHANDLE)=' "$ARTIFACT_DIR/config-docker-final" || true
+grep -E 'CONFIG_(CUSTOM_KERNEL_LCM|CUSTOM_KERNEL_IMGSENSOR|FRAME_WARN|SCHED_BORE|SYSVIPC|POSIX_MQUEUE|CGROUP_PIDS|CGROUP_DEVICE|CFS_BANDWIDTH|PID_NS|IPC_NS|USER_NS|VETH|MACVLAN|OVERLAY_FS|BRIDGE_NETFILTER|NETFILTER_XT_MATCH_ADDRTYPE|IP_NF_TARGET_MASQUERADE|FHANDLE)=' "$ARTIFACT_DIR/config-docker-final" || true
 
 log "Artifacts"
 find "$ARTIFACT_DIR" -maxdepth 1 -type f -printf '%f %s bytes\n' | sort
