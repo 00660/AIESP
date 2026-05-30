@@ -325,11 +325,11 @@ module.write_text(text)
 binder = src / "drivers/android/binder.c"
 text = binder.read_text()
 old = "#ifdef CONFIG_ANDROID_BINDER_LOGS\n\tstruct binder_transaction_log_entry *e;\n#endif\n"
-new = "#if defined(CONFIG_ANDROID_BINDER_LOGS) || defined(CONFIG_ANDROID_BINDER_USER_TRACKING)\n\tstruct binder_transaction_log_entry *e;\n#endif\n"
+new = "#ifdef CONFIG_ANDROID_BINDER_LOGS\n\tstruct binder_transaction_log_entry *e;\n#endif\n#ifdef CONFIG_ANDROID_BINDER_USER_TRACKING\n\tstruct timespec binder_tx_timestamp;\n\tstruct timeval binder_tx_tv;\n#endif\n"
 if old in text:
     text = text.replace(old, new, 1)
 elif new not in text:
-    raise SystemExit("expected binder transaction log declaration pattern not found")
+    raise SystemExit("expected binder user tracking declaration pattern not found")
 
 old = """#ifdef CONFIG_ANDROID_BINDER_LOGS
 \te = binder_transaction_log_add(&binder_transaction_log);
@@ -350,9 +350,8 @@ old = """#ifdef CONFIG_ANDROID_BINDER_LOGS
 #endif
 #endif
 """
-new = """#if defined(CONFIG_ANDROID_BINDER_LOGS) || defined(CONFIG_ANDROID_BINDER_USER_TRACKING)
+new = """#ifdef CONFIG_ANDROID_BINDER_LOGS
 \te = binder_transaction_log_add(&binder_transaction_log);
-#ifdef CONFIG_ANDROID_BINDER_LOGS
 \te->debug_id = t_debug_id;
 \te->call_type = reply ? 2 : !!(tr->flags & TF_ONE_WAY);
 \te->from_proc = proc->pid;
@@ -361,7 +360,6 @@ new = """#if defined(CONFIG_ANDROID_BINDER_LOGS) || defined(CONFIG_ANDROID_BINDE
 \te->data_size = tr->data_size;
 \te->offsets_size = tr->offsets_size;
 \te->context_name = proc->context->name;
-#endif
 #ifdef CONFIG_ANDROID_BINDER_USER_TRACKING
 \tktime_get_ts(&e->timestamp);
 \t/* monotonic_to_bootbased(&e->timestamp); */
@@ -370,11 +368,36 @@ new = """#if defined(CONFIG_ANDROID_BINDER_LOGS) || defined(CONFIG_ANDROID_BINDE
 \te->tv.tv_sec -= (sys_tz.tz_minuteswest * 60);
 #endif
 #endif
+#ifdef CONFIG_ANDROID_BINDER_USER_TRACKING
+\tktime_get_ts(&binder_tx_timestamp);
+\t/* monotonic_to_bootbased(&binder_tx_timestamp); */
+\tdo_gettimeofday(&binder_tx_tv);
+\t/* consider time zone. translate to android time */
+\tbinder_tx_tv.tv_sec -= (sys_tz.tz_minuteswest * 60);
+#endif
 """
 if old in text:
     text = text.replace(old, new, 1)
 elif new not in text:
-    raise SystemExit("expected binder transaction log init pattern not found")
+    raise SystemExit("expected binder log init pattern not found")
+
+old = """#ifdef CONFIG_ANDROID_BINDER_USER_TRACKING
+\tmemcpy(&t->timestamp, &e->timestamp, sizeof(struct timespec));
+\t/* do_gettimeofday(&t->tv); */
+\t/* consider time zone. translate to android time */
+\t/* t->tv.tv_sec -= (sys_tz.tz_minuteswest * 60); */
+\tmemcpy(&t->tv, &e->tv, sizeof(struct timeval));
+#endif
+"""
+new = """#ifdef CONFIG_ANDROID_BINDER_USER_TRACKING
+\tmemcpy(&t->timestamp, &binder_tx_timestamp, sizeof(struct timespec));
+\tmemcpy(&t->tv, &binder_tx_tv, sizeof(struct timeval));
+#endif
+"""
+if old in text:
+    text = text.replace(old, new, 1)
+elif new not in text:
+    raise SystemExit("expected binder user tracking copy pattern not found")
 binder.write_text(text)
 
 for rel in ("kernel/Makefile", "mm/Makefile"):
