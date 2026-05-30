@@ -221,6 +221,39 @@ if old in text:
 elif new not in text:
     raise SystemExit("expected cpuset_write_resmask_assist pattern not found")
 
+vmscan = src / "mm/vmscan.c"
+text = vmscan.read_text()
+if "static DECLARE_RWSEM(shrinker_rwsem);" not in text and "static DEFINE_RWSEM(shrinker_rwsem);" not in text:
+    old = "static DEFINE_RWLOCK(shrinker_rwlock);\n"
+    new = "static DEFINE_RWLOCK(shrinker_rwlock);\nstatic DECLARE_RWSEM(shrinker_rwsem);\n"
+    if old not in text:
+        raise SystemExit("expected shrinker_rwlock declaration not found")
+    vmscan.write_text(text.replace(old, new, 1))
+
+sched = src / "kernel/sched/sched.h"
+text = sched.read_text()
+old = "static inline void check_for_migration(struct rq *rq, struct task_struct *p) { }\n\nstatic inline int sched_boost(void)"
+new = "#ifndef CONFIG_MTK_SCHED_BIG_TASK_MIGRATE\nstatic inline void check_for_migration(struct rq *rq, struct task_struct *p) { }\n#endif\n\nstatic inline int sched_boost(void)"
+if old in text:
+    text = text.replace(old, new, 1)
+elif new not in text:
+    raise SystemExit("expected check_for_migration fallback pattern not found")
+
+old = "static inline bool hmp_capable(void) { return false; }\nstatic inline bool is_max_capacity_cpu(int cpu) { return true; }\nstatic inline bool is_min_capacity_cpu(int cpu) { return true; }\n\nstatic inline int\npreferred_cluster"
+new = "static inline bool hmp_capable(void) { return false; }\n#ifndef CONFIG_MTK_SCHED_BIG_TASK_MIGRATE\nstatic inline bool is_max_capacity_cpu(int cpu) { return true; }\nstatic inline bool is_min_capacity_cpu(int cpu) { return true; }\n#endif\n\nstatic inline int\npreferred_cluster"
+if old in text:
+    text = text.replace(old, new, 1)
+elif new not in text:
+    raise SystemExit("expected capacity fallback pattern not found")
+
+old = "static inline int is_reserved(int cpu)\n{\n\treturn 0;\n}\n\nstatic inline enum sched_boost_policy sched_boost_policy(void)"
+new = "#ifndef CONFIG_MTK_SCHED_BIG_TASK_MIGRATE\nstatic inline int is_reserved(int cpu)\n{\n\treturn 0;\n}\n#endif\n\nstatic inline enum sched_boost_policy sched_boost_policy(void)"
+if old in text:
+    text = text.replace(old, new, 1)
+elif new not in text:
+    raise SystemExit("expected is_reserved fallback pattern not found")
+sched.write_text(text)
+
 for rel in ("kernel/Makefile", "mm/Makefile"):
     makefile = src / rel
     text = makefile.read_text()
@@ -270,6 +303,7 @@ log "Pin release metadata and Docker options"
 "$SRC_DIR/scripts/config" --file "$OUT_DIR/.config" \
   --set-str LOCALVERSION "$LOCALVERSION" \
   --disable LOCALVERSION_AUTO \
+  --set-val FRAME_WARN 8192 \
   --enable IKCONFIG \
   --enable IKCONFIG_PROC \
   --enable SYSVIPC \
@@ -306,7 +340,7 @@ printf '%s\n' "$KERNEL_RELEASE" > "$ARTIFACT_DIR/kernel-release"
 cp -f "$OUT_DIR/arch/$ARCH/boot/Image.gz" "$ARTIFACT_DIR/Image.gz"
 
 log "Docker config summary"
-grep -E 'CONFIG_(SYSVIPC|POSIX_MQUEUE|CGROUP_PIDS|CGROUP_DEVICE|CFS_BANDWIDTH|PID_NS|IPC_NS|USER_NS|VETH|MACVLAN|OVERLAY_FS|BRIDGE_NETFILTER|NETFILTER_XT_MATCH_ADDRTYPE|IP_NF_TARGET_MASQUERADE|FHANDLE)=' "$ARTIFACT_DIR/config-docker-final" || true
+grep -E 'CONFIG_(FRAME_WARN|SYSVIPC|POSIX_MQUEUE|CGROUP_PIDS|CGROUP_DEVICE|CFS_BANDWIDTH|PID_NS|IPC_NS|USER_NS|VETH|MACVLAN|OVERLAY_FS|BRIDGE_NETFILTER|NETFILTER_XT_MATCH_ADDRTYPE|IP_NF_TARGET_MASQUERADE|FHANDLE)=' "$ARTIFACT_DIR/config-docker-final" || true
 
 log "Artifacts"
 find "$ARTIFACT_DIR" -maxdepth 1 -type f -printf '%f %s bytes\n' | sort

@@ -1,6 +1,6 @@
 # 89 AlphaDroid Docker kernel handoff
 
-更新时间：2026-05-30 10:06
+更新时间：2026-05-30 10:26
 
 ## 当前结论
 
@@ -47,6 +47,8 @@
 - `HANDOFF.md.bak-20260530-095840-armhf-prefix`
 - `.github/workflows/build-dandelion-docker-kernel.yml.bak-20260530-100559-ubuntu2404`
 - `HANDOFF.md.bak-20260530-100559-ubuntu2404`
+- `scripts/build-dandelion-docker-kernel.sh.bak-20260530-102113-kknx-compile-fixes`
+- `HANDOFF.md.bak-20260530-102113-kknx-compile-fixes`
 
 ## 脚本状态
 
@@ -61,6 +63,7 @@
 - 2026-05-30 10:06 起，GitHub Actions runner 从 `ubuntu-22.04` 改为 `ubuntu-24.04`，用于满足 Neutron clang `11032023` 对 `GLIBC_2.36` 的运行时要求。
 - `OUT_DIR` 默认对齐为 KKNX `clang.sh` 的源码内 `out`，artifact 仍只收集 `Image.gz`、`config-docker-final`、`kernel-release`。
 - 最新失败日志里的 `cpuset_write_resmask_assist` 已补 `CONFIG_CPUSET_ASSIST` 条件保护；`kernel/Makefile` 和 `mm/Makefile` 的子目录 `ccflags-y += -mllvm ...` 已在构建时移除，避免和全局 LLVM 参数重复或不兼容。
+- 2026-05-30 10:26 起，按 run `26671667343` 日志补 KKNX 编译兼容项：`mm/vmscan.c` 增加 `shrinker_rwsem` 声明；`kernel/sched/sched.h` 在 `CONFIG_MTK_SCHED_BIG_TASK_MIGRATE=y` 时避免 WALT fallback 与 `eas_plus.h` extern 冲突；`CONFIG_FRAME_WARN` 调整为 `8192` 以绕过 `fs/d_path.c:getcwd` 的 clang 栈帧 Werror。
 - 旧 `niigo` 兼容补丁默认不执行，只有显式设置 `APPLY_LEGACY_NIIGO_PATCHES=1` 才会执行。
 - 已移除默认 `MTK_*`、`MTK_LCM`、camera、GPS、display 相关禁用项，只保留 Docker 需要的内核配置补项和当前已禁用的 `FHANDLE` 策略。
 
@@ -105,4 +108,5 @@
 - 2026-05-30 run `26670452786` 已切到 KKNX `clang.sh` 路线，但长时间停在 `Build kernel`，运行中日志接口未生成完整日志；怀疑卡在 `prepare_compiler.sh` 的在线 `antman` 工具链安装。
 - 2026-05-30 run `26671030079` 失败点已确认：Neutron clang 固定下载和 SHA 校验通过，但 `snapshots.linaro.org` 下载 aarch64 Linaro 工具链超时，导致 `tar` 收到空输入。
 - 2026-05-30 run `26671399589` 走到了 `olddefconfig`，失败点为 Neutron clang 需要 `GLIBC_2.36`，而 `ubuntu-22.04` runner 只有 glibc 2.35。
-- 2026-05-30 10:06 本地已改为 `ubuntu-24.04` runner，等待重新触发 GitHub Actions 验证。
+- 2026-05-30 run `26671667343` 已进入正式编译，失败点为 `mm/vmscan.c` 缺 `shrinker_rwsem`、`kernel/sched/sched.h` 与 `eas_plus.h` 的 WALT fallback 声明冲突，以及 `fs/d_path.c` 在 `CONFIG_FRAME_WARN=2800` 下被 `-Wframe-larger-than` 当作错误。
+- 2026-05-30 10:26 本地已补上述 KKNX 编译兼容项，等待重新触发 GitHub Actions 验证。
