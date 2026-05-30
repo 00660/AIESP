@@ -271,6 +271,23 @@ elif "static const u64 max_cfs_runtime" not in text:
     raise SystemExit("expected CFS quota period pattern not found")
 core.write_text(text)
 
+fair = src / "kernel/sched/fair.c"
+text = fair.read_text()
+old = "#ifdef CONFIG_MTK_SCHED_INTEROP\n\t\tload  += mt_rt_load(i);\n#endif\n\n\t\tsgs->group_load += cpu_runnable_load(rq);"
+new = "#ifdef CONFIG_MTK_SCHED_INTEROP\n\t\tsgs->group_load += mt_rt_load(i);\n#endif\n\n\t\tsgs->group_load += cpu_runnable_load(rq);"
+if old in text:
+    text = text.replace(old, new, 1)
+elif new not in text:
+    raise SystemExit("expected update_sg_lb_stats MTK interop pattern not found")
+
+old = "#ifdef CONFIG_MTK_SCHED_INTEROP\n\t\twl += mt_rt_load(i);\n#endif\n\n\t\t/*\n\t\t * When comparing with imbalance, use cpu_runnable_load()"
+new = "#ifdef CONFIG_MTK_SCHED_INTEROP\n\t\tload += mt_rt_load(i);\n#endif\n\n\t\t/*\n\t\t * When comparing with imbalance, use cpu_runnable_load()"
+if old in text:
+    text = text.replace(old, new, 1)
+elif new not in text:
+    raise SystemExit("expected find_busiest_queue MTK interop pattern not found")
+fair.write_text(text)
+
 for rel in ("kernel/Makefile", "mm/Makefile"):
     makefile = src / rel
     text = makefile.read_text()
@@ -321,6 +338,7 @@ log "Pin release metadata and Docker options"
   --set-str LOCALVERSION "$LOCALVERSION" \
   --disable LOCALVERSION_AUTO \
   --set-val FRAME_WARN 8192 \
+  --disable SCHED_BORE \
   --enable IKCONFIG \
   --enable IKCONFIG_PROC \
   --enable SYSVIPC \
@@ -357,7 +375,7 @@ printf '%s\n' "$KERNEL_RELEASE" > "$ARTIFACT_DIR/kernel-release"
 cp -f "$OUT_DIR/arch/$ARCH/boot/Image.gz" "$ARTIFACT_DIR/Image.gz"
 
 log "Docker config summary"
-grep -E 'CONFIG_(FRAME_WARN|SYSVIPC|POSIX_MQUEUE|CGROUP_PIDS|CGROUP_DEVICE|CFS_BANDWIDTH|PID_NS|IPC_NS|USER_NS|VETH|MACVLAN|OVERLAY_FS|BRIDGE_NETFILTER|NETFILTER_XT_MATCH_ADDRTYPE|IP_NF_TARGET_MASQUERADE|FHANDLE)=' "$ARTIFACT_DIR/config-docker-final" || true
+grep -E 'CONFIG_(FRAME_WARN|SCHED_BORE|SYSVIPC|POSIX_MQUEUE|CGROUP_PIDS|CGROUP_DEVICE|CFS_BANDWIDTH|PID_NS|IPC_NS|USER_NS|VETH|MACVLAN|OVERLAY_FS|BRIDGE_NETFILTER|NETFILTER_XT_MATCH_ADDRTYPE|IP_NF_TARGET_MASQUERADE|FHANDLE)=' "$ARTIFACT_DIR/config-docker-final" || true
 
 log "Artifacts"
 find "$ARTIFACT_DIR" -maxdepth 1 -type f -printf '%f %s bytes\n' | sort
