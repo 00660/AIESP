@@ -135,6 +135,39 @@ for makefile in (src / "drivers/misc/mediatek").rglob("Makefile"):
 PY
 }
 
+apply_kknx_build_fixes() {
+  log "Apply KKNX build compatibility fixes"
+
+  python3 - "$SRC_DIR" <<'PY'
+from pathlib import Path
+import sys
+
+makefile = Path(sys.argv[1]) / "Makefile"
+text = makefile.read_text()
+remove_lines = {
+    "KBUILD_CFLAGS  += -mllvm -inline-savings-multiplier=18",
+    "KBUILD_CFLAGS  += -mllvm -ignore-tti-inline-compatible",
+    "KBUILD_CFLAGS  += -mllvm -inline-size-allowance=30",
+    "KBUILD_CFLAGS  += -mllvm -inline-instr-cost=8",
+    "KBUILD_CFLAGS  += -mllvm -inline-call-penalty=8",
+    "KBUILD_CFLAGS  += -mllvm -inline-enable-cost-benefit-analysis",
+}
+lines = []
+hot_cold_seen = False
+for line in text.splitlines():
+    if line in remove_lines:
+        continue
+    if line == "KBUILD_CFLAGS   += -mllvm -hot-cold-split=true":
+        if hot_cold_seen:
+            continue
+        hot_cold_seen = True
+    lines.append(line)
+makefile.write_text("\n".join(lines) + "\n")
+PY
+}
+
+apply_kknx_build_fixes
+
 if [[ "$APPLY_LEGACY_NIIGO_PATCHES" == "1" ]]; then
   apply_source_patches
 else

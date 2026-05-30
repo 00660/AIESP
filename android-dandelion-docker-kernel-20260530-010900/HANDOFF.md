@@ -82,4 +82,4 @@
 ## 构建记录
 
 - 2026-05-30 run `26669315582` 使用 Ubuntu clang 14 失败，错误为旧 LLVM 参数 `-ignore-tti-inline-compatible`、`-inline-instr-cost=8` 不被 clang 14 支持。
-- 后续构建应使用 `clang-r383902`，不要为了适配 clang 14 去删除 KKNX Makefile 里的优化参数。
+- 2026-05-30 run `26669575953` 已切到 `clang-r383902`，但 KKNX `Makefile` 仍有该 clang 不支持的内联优化参数；脚本现在只移除日志明确报错的 KBUILD_CFLAGS 行，并去掉重复的 `-hot-cold-split=true`。
