@@ -11,6 +11,9 @@ BASE_CONFIG="${BASE_CONFIG:-$ROOT_DIR/current.config}"
 FRAGMENT="${FRAGMENT:-$ROOT_DIR/config/docker-required.fragment}"
 SRC_DIR="${SRC_DIR:-$WORK_DIR/kernel}"
 OUT_DIR="${OUT_DIR:-$SRC_DIR/out}"
+NEUTRON_CLANG_TAG="${NEUTRON_CLANG_TAG:-11032023}"
+NEUTRON_CLANG_SHA256="${NEUTRON_CLANG_SHA256:-ba8c71078f647a22f6adb8c289210889718fc4b4250e9502ad3932dc1f65c4ec}"
+NEUTRON_CLANG_URL="${NEUTRON_CLANG_URL:-https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/$NEUTRON_CLANG_TAG/neutron-clang-$NEUTRON_CLANG_TAG.tar.zst}"
 AARCH64_LINARO_URL="${AARCH64_LINARO_URL:-https://snapshots.linaro.org/gnu-toolchain/13.0-2022.10-1/aarch64-linux-gnu/gcc-linaro-13.0.0-2022.10-x86_64_aarch64-linux-gnu.tar.xz}"
 ARM32_LINARO_URL="${ARM32_LINARO_URL:-https://snapshots.linaro.org/gnu-toolchain/13.0-2022.10-1/arm-linux-gnueabihf/gcc-linaro-13.0.0-2022.10-x86_64_arm-linux-gnueabihf.tar.xz}"
 JOBS="${JOBS:-$(nproc)}"
@@ -30,7 +33,7 @@ sudo apt-get install -y --no-install-recommends \
   bc bison build-essential ca-certificates ccache curl flex git \
   libelf-dev libssl-dev \
   gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
-  python3 rsync wget xz-utils
+  python3 rsync wget xz-utils zstd
 
 mkdir -p "$WORK_DIR"
 
@@ -60,13 +63,27 @@ download_toolchain() {
   [[ -x "$target_dir/bin/$binary" ]]
 }
 
+download_neutron_clang() {
+  local tarball="$WORK_DIR/neutron-clang-$NEUTRON_CLANG_TAG.tar.zst"
+
+  if [[ -x "$SRC_DIR/clang/bin/clang" ]]; then
+    return
+  fi
+
+  log "Install Neutron clang: $NEUTRON_CLANG_TAG"
+  rm -rf "$SRC_DIR/clang"
+  mkdir -p "$SRC_DIR/clang"
+  curl -L "$NEUTRON_CLANG_URL" -o "$tarball"
+  printf '%s  %s\n' "$NEUTRON_CLANG_SHA256" "$tarball" | sha256sum -c -
+  tar -I zstd -xf "$tarball" -C "$SRC_DIR/clang"
+  rm -f "$tarball"
+  [[ -x "$SRC_DIR/clang/bin/clang" ]]
+}
+
 install_kknx_native_toolchains() {
   log "Install KKNX native toolchains"
 
-  if [[ ! -x "$SRC_DIR/clang/bin/clang" ]]; then
-    rm -rf "$SRC_DIR/clang"
-    (cd "$SRC_DIR" && bash prepare_compiler.sh)
-  fi
+  download_neutron_clang
 
   download_toolchain \
     "$AARCH64_LINARO_URL" \
