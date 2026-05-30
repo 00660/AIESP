@@ -400,6 +400,78 @@ elif new not in text:
     raise SystemExit("expected binder user tracking copy pattern not found")
 binder.write_text(text)
 
+secureboot = src / "drivers/firmware/efi/libstub/secureboot.c"
+text = secureboot.read_text()
+replacements = {
+    'static const efi_char16_t efi_SecureBoot_name[] = L"SecureBoot";':
+        'static const efi_char16_t efi_SecureBoot_name[] = u"SecureBoot";',
+    'static const efi_char16_t efi_SetupMode_name[] = L"SetupMode";':
+        'static const efi_char16_t efi_SetupMode_name[] = u"SetupMode";',
+    'static const efi_char16_t shim_MokSBState_name[] = L"MokSBState";':
+        'static const efi_char16_t shim_MokSBState_name[] = u"MokSBState";',
+}
+for old, new in replacements.items():
+    if old in text:
+        text = text.replace(old, new, 1)
+    elif new not in text:
+        raise SystemExit(f"expected EFI secureboot string pattern not found: {old}")
+secureboot.write_text(text)
+
+nf_log = src / "include/net/netfilter/nf_log.h"
+text = nf_log.read_text()
+old = """void nf_log_trace(struct net *net,
+\t\t   u_int8_t pf,
+\t\t   unsigned int hooknum,
+\t\t   const struct sk_buff *skb,
+\t\t   const struct net_device *in,
+\t\t   const struct net_device *out,
+\t\t   const struct nf_loginfo *li,
+\t\t   const char *fmt, ...)
+
+#else
+"""
+new = """void nf_log_trace(struct net *net,
+\t\t   u_int8_t pf,
+\t\t   unsigned int hooknum,
+\t\t   const struct sk_buff *skb,
+\t\t   const struct net_device *in,
+\t\t   const struct net_device *out,
+\t\t   const struct nf_loginfo *li,
+\t\t   const char *fmt, ...);
+
+#else
+"""
+if old in text:
+    text = text.replace(old, new, 1)
+elif new not in text:
+    raise SystemExit("expected nf_log_trace declaration pattern not found")
+nf_log.write_text(text)
+
+net_procfs = src / "net/core/net-procfs.c"
+text = net_procfs.read_text()
+old = """#ifndef CONFIG_PROC_STRIPPED
+\tif (!proc_create("softnet_stat", S_IRUGO, net->proc_net,
+\t\t\t &softnet_seq_fops))
+\t\tgoto out_dev;
+\tif (!proc_create("ptype", S_IRUGO, net->proc_net, &ptype_seq_fops))
+\t\tgoto out_softnet;
+#endif
+"""
+new = """#ifndef CONFIG_PROC_STRIPPED
+\tif (!proc_create_net("softnet_stat", S_IRUGO, net->proc_net,
+\t\t\t &softnet_seq_ops, sizeof(struct seq_net_private)))
+\t\tgoto out_dev;
+\tif (!proc_create_net("ptype", S_IRUGO, net->proc_net,
+\t\t\t &ptype_seq_ops, sizeof(struct seq_net_private)))
+\t\tgoto out_softnet;
+#endif
+"""
+if old in text:
+    text = text.replace(old, new, 1)
+elif new not in text:
+    raise SystemExit("expected net procfs seq fops pattern not found")
+net_procfs.write_text(text)
+
 for rel in ("kernel/Makefile", "mm/Makefile"):
     makefile = src / rel
     text = makefile.read_text()
