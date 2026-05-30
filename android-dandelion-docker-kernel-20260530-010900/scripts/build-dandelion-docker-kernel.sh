@@ -9,10 +9,10 @@ DEFCONFIG="${DEFCONFIG:-blossom_stock_defconfig}"
 ARCH="${ARCH:-arm64}"
 BASE_CONFIG="${BASE_CONFIG:-$ROOT_DIR/current.config}"
 FRAGMENT="${FRAGMENT:-$ROOT_DIR/config/docker-required.fragment}"
-OUT_DIR="${OUT_DIR:-$WORK_DIR/out}"
 SRC_DIR="${SRC_DIR:-$WORK_DIR/kernel}"
-CLANG_DIR="${CLANG_DIR:-$WORK_DIR/clang-r383902}"
-CLANG_URL="${CLANG_URL:-https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/tags/android-11.0.0_r48/clang-r383902.tar.gz}"
+OUT_DIR="${OUT_DIR:-$SRC_DIR/out}"
+AARCH64_LINARO_URL="${AARCH64_LINARO_URL:-https://snapshots.linaro.org/gnu-toolchain/13.0-2022.10-1/aarch64-linux-gnu/gcc-linaro-13.0.0-2022.10-x86_64_aarch64-linux-gnu.tar.xz}"
+ARM32_LINARO_URL="${ARM32_LINARO_URL:-https://snapshots.linaro.org/gnu-toolchain/13.0-2022.10-1/arm-linux-gnueabihf/gcc-linaro-13.0.0-2022.10-x86_64_arm-linux-gnueabihf.tar.xz}"
 JOBS="${JOBS:-$(nproc)}"
 KERNEL_RELEASE="${KERNEL_RELEASE:-4.19.127-perf-g7288046673d5}"
 LOCALVERSION="${LOCALVERSION:--perf}"
@@ -30,16 +30,9 @@ sudo apt-get install -y --no-install-recommends \
   bc bison build-essential ca-certificates ccache curl flex git \
   libelf-dev libssl-dev \
   gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
-  python3 rsync xz-utils
+  python3 rsync wget xz-utils
 
-mkdir -p "$WORK_DIR" "$OUT_DIR"
-
-if [[ ! -x "$CLANG_DIR/bin/clang" ]]; then
-  log "Install Android clang-r383902"
-  rm -rf "$CLANG_DIR"
-  mkdir -p "$CLANG_DIR"
-  curl -L "$CLANG_URL" | tar -xz -C "$CLANG_DIR"
-fi
+mkdir -p "$WORK_DIR"
 
 if [[ ! -d "$SRC_DIR/.git" ]]; then
   log "Clone kernel source: $KERNEL_REPO ($KERNEL_REF)"
@@ -49,6 +42,48 @@ else
   git -C "$SRC_DIR" fetch --depth 1 origin "$KERNEL_REF"
   git -C "$SRC_DIR" checkout FETCH_HEAD
 fi
+
+mkdir -p "$OUT_DIR"
+
+download_toolchain() {
+  local url="$1"
+  local target_dir="$2"
+  local binary="$3"
+
+  if [[ -x "$target_dir/bin/$binary" ]]; then
+    return
+  fi
+
+  log "Install toolchain: $target_dir"
+  rm -rf "$target_dir"
+  curl -L "$url" | tar -xJ -C "$SRC_DIR"
+  [[ -x "$target_dir/bin/$binary" ]]
+}
+
+install_kknx_native_toolchains() {
+  log "Install KKNX native toolchains"
+
+  if [[ ! -x "$SRC_DIR/clang/bin/clang" ]]; then
+    rm -rf "$SRC_DIR/clang"
+    (cd "$SRC_DIR" && bash prepare_compiler.sh)
+  fi
+
+  download_toolchain \
+    "$AARCH64_LINARO_URL" \
+    "$SRC_DIR/gcc-linaro-13.0.0-2022.10-x86_64_aarch64-linux-gnu" \
+    aarch64-linux-gnu-gcc
+
+  download_toolchain \
+    "$ARM32_LINARO_URL" \
+    "$SRC_DIR/gcc-linaro-13.0.0-2022.10-x86_64_arm-linux-gnueabihf" \
+    arm-linux-gnueabihf-gcc
+
+  chmod +x "$SRC_DIR/clang.sh"
+}
+
+run_kknx_make() {
+  (cd "$SRC_DIR" && ./clang.sh "$@")
+}
 
 apply_source_patches() {
   log "Apply source compatibility patches"
@@ -142,21 +177,49 @@ apply_kknx_build_fixes() {
 from pathlib import Path
 import sys
 
-makefile = Path(sys.argv[1]) / "Makefile"
-text = makefile.read_text()
-remove_lines = {
-    "KBUILD_CFLAGS  += -mllvm -inline-savings-multiplier=18",
-    "KBUILD_CFLAGS  += -mllvm -ignore-tti-inline-compatible",
-    "KBUILD_CFLAGS  += -mllvm -inline-size-allowance=30",
-    "KBUILD_CFLAGS  += -mllvm -inline-instr-cost=8",
-    "KBUILD_CFLAGS  += -mllvm -inline-call-penalty=8",
-    "KBUILD_CFLAGS  += -mllvm -inline-enable-cost-benefit-analysis",
+src = Path(sys.argv[1])
+
+cpuset = src / "kernel/cgroup/cpuset.c"
+text = cpuset.read_text()
+old = """static ssize_t cpuset_write_resmask_assist(struct kernfs_open_file *of,
+\t\t\t\t\t   struct cs_target tgt, size_t nbytes,
+\t\t\t\t\t   loff_t off)
+{
+\tpr_info("cpuset_assist: setting %s to %s\\n", tgt.name, tgt.cpus);
+\treturn cpuset_write_resmask(of, tgt.cpus, nbytes, off);
 }
+
+static ssize_t cpuset_write_resmask_wrapper"""
+new = """#ifdef CONFIG_CPUSET_ASSIST
+static ssize_t cpuset_write_resmask_assist(struct kernfs_open_file *of,
+\t\t\t\t\t   struct cs_target tgt, size_t nbytes,
+\t\t\t\t\t   loff_t off)
+{
+\tpr_info("cpuset_assist: setting %s to %s\\n", tgt.name, tgt.cpus);
+\treturn cpuset_write_resmask(of, tgt.cpus, nbytes, off);
+}
+#endif
+
+static ssize_t cpuset_write_resmask_wrapper"""
+if old in text:
+    cpuset.write_text(text.replace(old, new, 1))
+elif new not in text:
+    raise SystemExit("expected cpuset_write_resmask_assist pattern not found")
+
+for rel in ("kernel/Makefile", "mm/Makefile"):
+    makefile = src / rel
+    text = makefile.read_text()
+    lines = [
+        line for line in text.splitlines()
+        if not line.startswith("ccflags-y += -mllvm ")
+    ]
+    makefile.write_text("\n".join(lines) + "\n")
+
+makefile = src / "Makefile"
+text = makefile.read_text()
 lines = []
 hot_cold_seen = False
 for line in text.splitlines():
-    if line in remove_lines:
-        continue
     if line == "KBUILD_CFLAGS   += -mllvm -hot-cold-split=true":
         if hot_cold_seen:
             continue
@@ -167,6 +230,7 @@ PY
 }
 
 apply_kknx_build_fixes
+install_kknx_native_toolchains
 
 if [[ "$APPLY_LEGACY_NIIGO_PATCHES" == "1" ]]; then
   apply_source_patches
@@ -178,32 +242,14 @@ log "Prepare base config"
 if [[ -f "$BASE_CONFIG" ]]; then
   cp "$BASE_CONFIG" "$OUT_DIR/.config"
 else
-  make -C "$SRC_DIR" O="$OUT_DIR" ARCH="$ARCH" "$DEFCONFIG"
+  run_kknx_make "$DEFCONFIG"
 fi
 
 log "Merge Docker config fragment"
 "$SRC_DIR/scripts/kconfig/merge_config.sh" -m -O "$OUT_DIR" "$OUT_DIR/.config" "$FRAGMENT"
 
-MAKE_ARGS=(
-  -C "$SRC_DIR"
-  O="$OUT_DIR"
-  ARCH="$ARCH"
-  CC="$CLANG_DIR/bin/clang"
-  HOSTCC="$CLANG_DIR/bin/clang"
-  HOSTCXX="$CLANG_DIR/bin/clang++"
-  LD="$CLANG_DIR/bin/ld.lld"
-  AR="$CLANG_DIR/bin/llvm-ar"
-  NM="$CLANG_DIR/bin/llvm-nm"
-  OBJCOPY="$CLANG_DIR/bin/llvm-objcopy"
-  OBJDUMP="$CLANG_DIR/bin/llvm-objdump"
-  STRIP="$CLANG_DIR/bin/llvm-strip"
-  CLANG_TRIPLE=aarch64-linux-gnu-
-  CROSS_COMPILE=aarch64-linux-gnu-
-  CROSS_COMPILE_ARM32=arm-linux-gnueabi-
-)
-
 log "Run olddefconfig"
-make "${MAKE_ARGS[@]}" olddefconfig
+run_kknx_make olddefconfig
 
 log "Pin release metadata and Docker options"
 "$SRC_DIR/scripts/config" --file "$OUT_DIR/.config" \
@@ -232,10 +278,10 @@ log "Pin release metadata and Docker options"
   --enable OVERLAY_FS \
   --disable FHANDLE
 
-make "${MAKE_ARGS[@]}" olddefconfig
+run_kknx_make olddefconfig
 
 log "Build kernel image"
-make -j"$JOBS" "${MAKE_ARGS[@]}" KERNELRELEASE="$KERNEL_RELEASE" Image.gz
+run_kknx_make "-j$JOBS" KERNELRELEASE="$KERNEL_RELEASE" Image.gz
 
 ARTIFACT_DIR="$ROOT_DIR/artifacts"
 mkdir -p "$ARTIFACT_DIR"
