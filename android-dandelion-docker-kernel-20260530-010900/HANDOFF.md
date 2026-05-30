@@ -1,6 +1,6 @@
 # 89 AlphaDroid Docker kernel handoff
 
-更新时间：2026-05-30 11:48
+更新时间：2026-05-30 12:01
 
 ## 当前结论
 
@@ -63,6 +63,8 @@
 - `HANDOFF.md.bak-20260530-113650-binder-user-tracking`
 - `scripts/build-dandelion-docker-kernel.sh.bak-20260530-114715-efi-nf-procfs`
 - `HANDOFF.md.bak-20260530-114715-efi-nf-procfs`
+- `scripts/build-dandelion-docker-kernel.sh.bak-20260530-115925-ged-fibtrie`
+- `HANDOFF.md.bak-20260530-115925-ged-fibtrie`
 
 ## 脚本状态
 
@@ -83,6 +85,7 @@
 - 2026-05-30 10:59 起，按 run `26672473142` 日志修 `kernel/sched/debug.c`：去掉对 `fair.c` 私有 inline `cfs_rq_of()` 的调试输出依赖，并修正 `irst`/`first` 变量 typo。
 - 2026-05-30 11:37 起，按 run `26672678565` 和 `26673336612` 日志修 KKNX 默认编译路径：`kernel/module.c` 改用 `module_sect_attr.battr.attr.name` 访问 section 名；`drivers/android/binder.c` 在 `CONFIG_ANDROID_BINDER_USER_TRACKING=y` 但 `CONFIG_ANDROID_BINDER_LOGS` 未启用时使用本地 `timespec/timeval` 记录 transaction 时间，不依赖 binder logs 的 `binder_transaction_log_entry`。
 - 2026-05-30 11:48 起，按 run `26673529149` 日志继续补 KKNX/clang 编译兼容：EFI libstub secureboot 变量名从 `L"..."` 改为 `u"..."`；`include/net/netfilter/nf_log.h` 给 `nf_log_trace()` 原型补分号；`net/core/net-procfs.c` 的 `softnet_stat`/`ptype` 改用 `proc_create_net()` 加 `seq_operations`。
+- 2026-05-30 12:01 起，按 run `26673740215` 日志继续补 KKNX 编译兼容：`drivers/gpu/mediatek/ged/src/ged_log.c` 的 perf systrace 分支增加 `CONFIG_TRACE_PRINTK` 条件；`net/ipv4/fib_trie.c` 修复 `if !proc_create(...)` 少括号语法。
 - 旧 `niigo` 兼容补丁默认不执行，只有显式设置 `APPLY_LEGACY_NIIGO_PATCHES=1` 才会执行。
 - 已移除默认 `MTK_*`、`MTK_LCM`、camera、GPS、display 相关禁用项，只保留 Docker 需要的内核配置补项和当前已禁用的 `FHANDLE` 策略。
 
@@ -134,4 +137,5 @@
 - 2026-05-30 run `26672678565` 前述错误已通过，新的失败点为 `drivers/android/binder.c` 的 `e` 未声明，以及 `kernel/module.c` 的 `struct module_sect_attr` 没有 `name` 成员。
 - 2026-05-30 run `26673336612` 前述 module 错误已通过，新的失败点为 `CONFIG_ANDROID_BINDER_LOGS` 未启用时 `binder_transaction_log_add`、`binder_transaction_log` 和 `binder_transaction_log_entry` 都不可用。
 - 2026-05-30 run `26673529149` 前述 binder 错误已通过，新的失败点为 `drivers/firmware/efi/libstub/secureboot.c` 宽字符串类型不兼容；并发还暴露 `include/net/netfilter/nf_log.h` 少分号、`net/core/net-procfs.c` 引用不存在的 `softnet_seq_fops`/`ptype_seq_fops`。
-- 2026-05-30 11:48 本地已修 EFI/nf_log/net-procfs 三处编译兼容，等待重新触发 GitHub Actions 验证。
+- 2026-05-30 run `26673740215` 前述 EFI/nf_log/net-procfs 错误已通过，新的失败点为 MTK GED 使用 `event_trace_printk` 时缺 `CONFIG_TRACE_PRINTK`；并发还暴露 `net/ipv4/fib_trie.c` 两处 `if !proc_create(...)` 语法错误。
+- 2026-05-30 12:01 本地已修 GED trace 条件和 fib_trie 语法，等待重新触发 GitHub Actions 验证。

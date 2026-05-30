@@ -472,6 +472,42 @@ elif new not in text:
     raise SystemExit("expected net procfs seq fops pattern not found")
 net_procfs.write_text(text)
 
+ged_log = src / "drivers/gpu/mediatek/ged/src/ged_log.c"
+text = ged_log.read_text()
+old = "#if (defined(CONFIG_EVENT_TRACING) && defined(CONFIG_MTK_GPU_SUPPORT))\n\t\tpreempt_disable();\n\t\tevent_trace_printk(tracing_mark_write_addr,\n\t\t\t\"C|%d|%s|%lld|%llu|%lu\\n\", pid,\n\t\t\tname, count, (unsigned long long)BQID, frameID);\n\t\tpreempt_enable();\n#endif\n"
+new = "#if (defined(CONFIG_EVENT_TRACING) && defined(CONFIG_TRACE_PRINTK) && defined(CONFIG_MTK_GPU_SUPPORT))\n\t\tpreempt_disable();\n\t\tevent_trace_printk(tracing_mark_write_addr,\n\t\t\t\"C|%d|%s|%lld|%llu|%lu\\n\", pid,\n\t\t\tname, count, (unsigned long long)BQID, frameID);\n\t\tpreempt_enable();\n#endif\n"
+if old in text:
+    text = text.replace(old, new, 1)
+elif new not in text:
+    raise SystemExit("expected GED perf trace printk pattern not found")
+ged_log.write_text(text)
+
+fib_trie = src / "net/ipv4/fib_trie.c"
+text = fib_trie.read_text()
+old = """#ifndef CONFIG_PROC_STRIPPED
+\tif\t!proc_create("fib_trie", S_IRUGO, net->proc_net, &fib_trie_fops)
+\t\tgoto out1;
+
+\tif\t!proc_create("fib_triestat", S_IRUGO, net->proc_net,
+\t\t\t &fib_triestat_fops)
+\t\tgoto out2;
+#endif
+"""
+new = """#ifndef CONFIG_PROC_STRIPPED
+\tif (!proc_create("fib_trie", S_IRUGO, net->proc_net, &fib_trie_fops))
+\t\tgoto out1;
+
+\tif (!proc_create("fib_triestat", S_IRUGO, net->proc_net,
+\t\t\t &fib_triestat_fops))
+\t\tgoto out2;
+#endif
+"""
+if old in text:
+    text = text.replace(old, new, 1)
+elif new not in text:
+    raise SystemExit("expected fib_trie proc_create pattern not found")
+fib_trie.write_text(text)
+
 for rel in ("kernel/Makefile", "mm/Makefile"):
     makefile = src / rel
     text = makefile.read_text()
