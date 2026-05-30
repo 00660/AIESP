@@ -42,6 +42,7 @@
 - 默认分支已改为 `rebase`
 - 默认 defconfig 已改为 `blossom_stock_defconfig`
 - `BASE_CONFIG` 仍默认使用当前 89 运行内核导出的 `current.config`
+- 构建脚本默认下载并使用 AOSP `clang-r383902`，对应当前运行配置里的 `Android (6443078 based on r383902) clang version 11.0.1`，也对应 KKNX `build.config.mtk.aarch64` 的 `CLANG_PREBUILT_BIN=prebuilts/clang/host/linux-x86/clang-r383902/bin`。
 - 旧 `niigo` 兼容补丁默认不执行，只有显式设置 `APPLY_LEGACY_NIIGO_PATCHES=1` 才会执行。
 - 已移除默认 `MTK_*`、`MTK_LCM`、camera、GPS、display 相关禁用项，只保留 Docker 需要的内核配置补项和当前已禁用的 `FHANDLE` 策略。
 
@@ -77,3 +78,8 @@
 2. 先检查 `config-docker-final`，确认只补 Docker 项，没有动显示、相机、触控、GPS 等硬件相关配置。
 3. 未确认构建配置前，不 repack boot，不推手机，不刷 boot。
 4. 如果后续需要 SSH 操作 89，优先使用 `tools/phone_ssh.py`。
+
+## 构建记录
+
+- 2026-05-30 run `26669315582` 使用 Ubuntu clang 14 失败，错误为旧 LLVM 参数 `-ignore-tti-inline-compatible`、`-inline-instr-cost=8` 不被 clang 14 支持。
+- 后续构建应使用 `clang-r383902`，不要为了适配 clang 14 去删除 KKNX Makefile 里的优化参数。

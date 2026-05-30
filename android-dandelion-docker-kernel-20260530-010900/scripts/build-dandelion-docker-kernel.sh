@@ -11,6 +11,8 @@ BASE_CONFIG="${BASE_CONFIG:-$ROOT_DIR/current.config}"
 FRAGMENT="${FRAGMENT:-$ROOT_DIR/config/docker-required.fragment}"
 OUT_DIR="${OUT_DIR:-$WORK_DIR/out}"
 SRC_DIR="${SRC_DIR:-$WORK_DIR/kernel}"
+CLANG_DIR="${CLANG_DIR:-$WORK_DIR/clang-r383902}"
+CLANG_URL="${CLANG_URL:-https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/tags/android-11.0.0_r48/clang-r383902.tar.gz}"
 JOBS="${JOBS:-$(nproc)}"
 KERNEL_RELEASE="${KERNEL_RELEASE:-4.19.127-perf-g7288046673d5}"
 LOCALVERSION="${LOCALVERSION:--perf}"
@@ -26,11 +28,18 @@ log "Install build dependencies"
 sudo apt-get update
 sudo apt-get install -y --no-install-recommends \
   bc bison build-essential ca-certificates ccache curl flex git \
-  libelf-dev libssl-dev lld llvm clang \
+  libelf-dev libssl-dev \
   gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
   python3 rsync xz-utils
 
 mkdir -p "$WORK_DIR" "$OUT_DIR"
+
+if [[ ! -x "$CLANG_DIR/bin/clang" ]]; then
+  log "Install Android clang-r383902"
+  rm -rf "$CLANG_DIR"
+  mkdir -p "$CLANG_DIR"
+  curl -L "$CLANG_URL" | tar -xz -C "$CLANG_DIR"
+fi
 
 if [[ ! -d "$SRC_DIR/.git" ]]; then
   log "Clone kernel source: $KERNEL_REPO ($KERNEL_REF)"
@@ -146,10 +155,15 @@ MAKE_ARGS=(
   -C "$SRC_DIR"
   O="$OUT_DIR"
   ARCH="$ARCH"
-  CC=clang
-  HOSTCC=clang
-  HOSTCXX=clang++
-  LD=ld.lld
+  CC="$CLANG_DIR/bin/clang"
+  HOSTCC="$CLANG_DIR/bin/clang"
+  HOSTCXX="$CLANG_DIR/bin/clang++"
+  LD="$CLANG_DIR/bin/ld.lld"
+  AR="$CLANG_DIR/bin/llvm-ar"
+  NM="$CLANG_DIR/bin/llvm-nm"
+  OBJCOPY="$CLANG_DIR/bin/llvm-objcopy"
+  OBJDUMP="$CLANG_DIR/bin/llvm-objdump"
+  STRIP="$CLANG_DIR/bin/llvm-strip"
   CLANG_TRIPLE=aarch64-linux-gnu-
   CROSS_COMPILE=aarch64-linux-gnu-
   CROSS_COMPILE_ARM32=arm-linux-gnueabi-
