@@ -1,6 +1,6 @@
 # 89 AlphaDroid Docker kernel handoff
 
-更新时间：2026-05-30 09:40
+更新时间：2026-05-30 09:58
 
 ## 当前结论
 
@@ -41,6 +41,10 @@
 - `HANDOFF.md.bak-20260530-093918-fixed-neutron-toolchain`
 - `scripts/build-dandelion-docker-kernel.sh.bak-20260530-094152-neutron-clang-dir`
 - `HANDOFF.md.bak-20260530-094152-neutron-clang-dir`
+- `scripts/build-dandelion-docker-kernel.sh.bak-20260530-095646-system-cross-links`
+- `HANDOFF.md.bak-20260530-095646-system-cross-links`
+- `scripts/build-dandelion-docker-kernel.sh.bak-20260530-095840-armhf-prefix`
+- `HANDOFF.md.bak-20260530-095840-armhf-prefix`
 
 ## 脚本状态
 
@@ -51,7 +55,7 @@
 - 2026-05-30 09:10 起，构建脚本改为优先调用 KKNX 仓库自带 `clang.sh`，不再手写维护一整套 `make CC/LD/CROSS_COMPILE` 参数。
 - 2026-05-30 09:40 起，不再执行 KKNX `prepare_compiler.sh` 里的在线 `antman` 流程；脚本改为固定下载 Neutron clang tag `11032023`，并校验 SHA256 `ba8c71078f647a22f6adb8c289210889718fc4b4250e9502ad3932dc1f65c4ec`。
 - 固定下载的 Neutron clang tarball 解压到 `$SRC_DIR/clang`，保持 KKNX `clang.sh` 期望的 `clang/bin/clang` 路径。
-- 脚本额外补齐 `clang.sh` 引用但仓库脚本未下载的 ARM32 Linaro 工具链目录。
+- 2026-05-30 09:58 起，不再从 `snapshots.linaro.org` 下载 Linaro GCC 包；脚本改为使用 apt 安装的 `gcc-aarch64-linux-gnu` 和 `gcc-arm-linux-gnueabihf`，在 KKNX `clang.sh` 期望的 Linaro 目录名下创建 symlink。
 - `OUT_DIR` 默认对齐为 KKNX `clang.sh` 的源码内 `out`，artifact 仍只收集 `Image.gz`、`config-docker-final`、`kernel-release`。
 - 最新失败日志里的 `cpuset_write_resmask_assist` 已补 `CONFIG_CPUSET_ASSIST` 条件保护；`kernel/Makefile` 和 `mm/Makefile` 的子目录 `ccflags-y += -mllvm ...` 已在构建时移除，避免和全局 LLVM 参数重复或不兼容。
 - 旧 `niigo` 兼容补丁默认不执行，只有显式设置 `APPLY_LEGACY_NIIGO_PATCHES=1` 才会执行。
@@ -96,4 +100,5 @@
 - 2026-05-30 run `26669575953` 已切到 `clang-r383902`，但 KKNX `Makefile` 仍有该 clang 不支持的内联优化参数；脚本现在只移除日志明确报错的 KBUILD_CFLAGS 行，并去掉重复的 `-hot-cold-split=true`。
 - 2026-05-30 run `26669733084` 失败点为 `kernel/cgroup/cpuset.c` 的 `struct cs_target` 条件编译错误，以及 `kernel/Makefile`、`mm/Makefile` 的 `--enable-merge-functions`/重复 `--unroll-threshold`。
 - 2026-05-30 run `26670452786` 已切到 KKNX `clang.sh` 路线，但长时间停在 `Build kernel`，运行中日志接口未生成完整日志；怀疑卡在 `prepare_compiler.sh` 的在线 `antman` 工具链安装。
-- 2026-05-30 09:40 本地已改成固定 Neutron clang 下载，等待重新触发 GitHub Actions 验证。
+- 2026-05-30 run `26671030079` 失败点已确认：Neutron clang 固定下载和 SHA 校验通过，但 `snapshots.linaro.org` 下载 aarch64 Linaro 工具链超时，导致 `tar` 收到空输入。
+- 2026-05-30 09:58 本地已改成系统交叉工具链 symlink，等待重新触发 GitHub Actions 验证。

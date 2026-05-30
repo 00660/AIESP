@@ -14,8 +14,6 @@ OUT_DIR="${OUT_DIR:-$SRC_DIR/out}"
 NEUTRON_CLANG_TAG="${NEUTRON_CLANG_TAG:-11032023}"
 NEUTRON_CLANG_SHA256="${NEUTRON_CLANG_SHA256:-ba8c71078f647a22f6adb8c289210889718fc4b4250e9502ad3932dc1f65c4ec}"
 NEUTRON_CLANG_URL="${NEUTRON_CLANG_URL:-https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/$NEUTRON_CLANG_TAG/neutron-clang-$NEUTRON_CLANG_TAG.tar.zst}"
-AARCH64_LINARO_URL="${AARCH64_LINARO_URL:-https://snapshots.linaro.org/gnu-toolchain/13.0-2022.10-1/aarch64-linux-gnu/gcc-linaro-13.0.0-2022.10-x86_64_aarch64-linux-gnu.tar.xz}"
-ARM32_LINARO_URL="${ARM32_LINARO_URL:-https://snapshots.linaro.org/gnu-toolchain/13.0-2022.10-1/arm-linux-gnueabihf/gcc-linaro-13.0.0-2022.10-x86_64_arm-linux-gnueabihf.tar.xz}"
 JOBS="${JOBS:-$(nproc)}"
 KERNEL_RELEASE="${KERNEL_RELEASE:-4.19.127-perf-g7288046673d5}"
 LOCALVERSION="${LOCALVERSION:--perf}"
@@ -32,7 +30,7 @@ sudo apt-get update
 sudo apt-get install -y --no-install-recommends \
   bc bison build-essential ca-certificates ccache curl flex git \
   libelf-dev libssl-dev \
-  gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
+  gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi gcc-arm-linux-gnueabihf \
   python3 rsync wget xz-utils zstd
 
 mkdir -p "$WORK_DIR"
@@ -47,21 +45,6 @@ else
 fi
 
 mkdir -p "$OUT_DIR"
-
-download_toolchain() {
-  local url="$1"
-  local target_dir="$2"
-  local binary="$3"
-
-  if [[ -x "$target_dir/bin/$binary" ]]; then
-    return
-  fi
-
-  log "Install toolchain: $target_dir"
-  rm -rf "$target_dir"
-  curl -L "$url" | tar -xJ -C "$SRC_DIR"
-  [[ -x "$target_dir/bin/$binary" ]]
-}
 
 download_neutron_clang() {
   local tarball="$WORK_DIR/neutron-clang-$NEUTRON_CLANG_TAG.tar.zst"
@@ -80,20 +63,35 @@ download_neutron_clang() {
   [[ -x "$SRC_DIR/clang/bin/clang" ]]
 }
 
+link_cross_toolchain() {
+  local target_dir="$1"
+  local triple="$2"
+  shift 2
+
+  rm -rf "$target_dir"
+  mkdir -p "$target_dir/bin"
+
+  for tool in "$@"; do
+    local src
+    src="$(command -v "$triple$tool")"
+    ln -s "$src" "$target_dir/bin/$triple$tool"
+  done
+}
+
 install_kknx_native_toolchains() {
   log "Install KKNX native toolchains"
 
   download_neutron_clang
 
-  download_toolchain \
-    "$AARCH64_LINARO_URL" \
+  link_cross_toolchain \
     "$SRC_DIR/gcc-linaro-13.0.0-2022.10-x86_64_aarch64-linux-gnu" \
-    aarch64-linux-gnu-gcc
+    aarch64-linux-gnu- \
+    gcc ld as ar nm objcopy objdump strip
 
-  download_toolchain \
-    "$ARM32_LINARO_URL" \
+  link_cross_toolchain \
     "$SRC_DIR/gcc-linaro-13.0.0-2022.10-x86_64_arm-linux-gnueabihf" \
-    arm-linux-gnueabihf-gcc
+    arm-linux-gnueabihf- \
+    gcc ld as ar nm objcopy objdump strip elfedit
 
   chmod +x "$SRC_DIR/clang.sh"
 }
