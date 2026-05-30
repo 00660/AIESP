@@ -494,11 +494,12 @@ old = """#ifndef CONFIG_PROC_STRIPPED
 #endif
 """
 new = """#ifndef CONFIG_PROC_STRIPPED
-\tif (!proc_create("fib_trie", S_IRUGO, net->proc_net, &fib_trie_fops))
+\tif (!proc_create_net("fib_trie", S_IRUGO, net->proc_net,
+\t\t\t &fib_trie_seq_ops, sizeof(struct fib_trie_iter)))
 \t\tgoto out1;
 
-\tif (!proc_create("fib_triestat", S_IRUGO, net->proc_net,
-\t\t\t &fib_triestat_fops))
+\tif (!proc_create_net_single("fib_triestat", S_IRUGO, net->proc_net,
+\t\t\t fib_triestat_seq_show, NULL))
 \t\tgoto out2;
 #endif
 """
@@ -507,6 +508,16 @@ if old in text:
 elif new not in text:
     raise SystemExit("expected fib_trie proc_create pattern not found")
 fib_trie.write_text(text)
+
+gc02m10 = src / "drivers/misc/mediatek/imgsensor/src/common/v1/gc_gc02m10_ii/gc_gc02m10_ii_Sensor.c"
+text = gc02m10.read_text()
+old = '#include "gc_gc02m10_ii_Sensor.h"\n'
+new = '#include "gc_gc02m10_ii_Sensor.h"\n\n#ifndef gc02m10_SENSOR_ID\n#define gc02m10_SENSOR_ID GC02M1_SENSOR_ID\n#endif\n'
+if old in text:
+    text = text.replace(old, new, 1)
+elif new not in text:
+    raise SystemExit("expected gc02m10 sensor id include pattern not found")
+gc02m10.write_text(text)
 
 for rel in ("kernel/Makefile", "mm/Makefile"):
     makefile = src / rel
