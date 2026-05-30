@@ -40,7 +40,7 @@ jobs:
           KERNEL_REPO: ${{ inputs.kernel_repo || 'https://github.com/danya2271/kuroneko_r_mt6765.git' }}
           KERNEL_REF: ${{ inputs.kernel_ref || 'rebase' }}
           DEFCONFIG: ${{ inputs.defconfig || 'blossom_stock_defconfig' }}
-          BASE_CONFIG: android-dandelion-docker-kernel-20260530-010900/current.config
+          USE_BASE_CONFIG: "0"
           KERNEL_RELEASE: ${{ inputs.kernel_release || '4.19.127-perf-g7288046673d5' }}
         run: |
           chmod +x android-dandelion-docker-kernel-20260530-010900/scripts/build-dandelion-docker-kernel.sh

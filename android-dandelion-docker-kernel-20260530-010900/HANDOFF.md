@@ -1,6 +1,6 @@
 # 89 AlphaDroid Docker kernel handoff
 
-更新时间：2026-05-30 15:13
+更新时间：2026-05-30 15:41
 
 ## 当前结论
 
@@ -69,13 +69,18 @@
 - `HANDOFF.md.bak-20260530-122422-fibtrie-imgsensor`
 - `scripts/build-dandelion-docker-kernel.sh.bak-20260530-151312-hardware-list-sanitize`
 - `HANDOFF.md.bak-20260530-151312-hardware-list-sanitize`
+- `scripts/build-dandelion-docker-kernel.sh.bak-20260530-154124-use-kknx-defconfig`
+- `HANDOFF.md.bak-20260530-154124-use-kknx-defconfig`
+- `.github/workflows/build-dandelion-docker-kernel.yml.bak-20260530-154124-use-kknx-defconfig`
 
 ## 脚本状态
 
 - `scripts/build-dandelion-docker-kernel.sh` 默认源已改为 `https://github.com/danya2271/kuroneko_r_mt6765.git`
 - 默认分支已改为 `rebase`
 - 默认 defconfig 已改为 `blossom_stock_defconfig`
-- `BASE_CONFIG` 仍默认使用当前 89 运行内核导出的 `current.config`
+- 默认不再使用当前 89 运行内核导出的整份 `current.config` 作为构建 `.config`。
+- `current.config` 只保留为运行配置审计材料；如需强制使用，必须显式设置 `USE_BASE_CONFIG=1`。
+- 默认配置来源：KKNX `blossom_stock_defconfig` -> Docker fragment -> `scripts/config` 固化 Docker 必需项和 release metadata。
 - 2026-05-30 09:10 起，构建脚本改为优先调用 KKNX 仓库自带 `clang.sh`，不再手写维护一整套 `make CC/LD/CROSS_COMPILE` 参数。
 - 2026-05-30 09:40 起，不再执行 KKNX `prepare_compiler.sh` 里的在线 `antman` 流程；脚本改为固定下载 Neutron clang tag `11032023`，并校验 SHA256 `ba8c71078f647a22f6adb8c289210889718fc4b4250e9502ad3932dc1f65c4ec`。
 - 固定下载的 Neutron clang tarball 解压到 `$SRC_DIR/clang`，保持 KKNX `clang.sh` 期望的 `clang/bin/clang` 路径。
@@ -91,7 +96,9 @@
 - 2026-05-30 11:48 起，按 run `26673529149` 日志继续补 KKNX/clang 编译兼容：EFI libstub secureboot 变量名从 `L"..."` 改为 `u"..."`；`include/net/netfilter/nf_log.h` 给 `nf_log_trace()` 原型补分号；`net/core/net-procfs.c` 的 `softnet_stat`/`ptype` 改用 `proc_create_net()` 加 `seq_operations`。
 - 2026-05-30 12:01 起，按 run `26673740215` 日志继续补 KKNX 编译兼容：`drivers/gpu/mediatek/ged/src/ged_log.c` 的 perf systrace 分支增加 `CONFIG_TRACE_PRINTK` 条件；`net/ipv4/fib_trie.c` 修复 `if !proc_create(...)` 少括号语法。
 - 2026-05-30 12:26 起，按 run `26674178286` 日志继续补 KKNX 编译兼容：`net/ipv4/fib_trie.c` 的 `fib_trie`/`fib_triestat` 从不存在的 `*_fops` 改为 `proc_create_net()`/`proc_create_net_single()`；`gc_gc02m10_ii_Sensor.c` 本地补 `gc02m10_SENSOR_ID` 兼容定义，映射到同仓已有 `GC02M1_SENSOR_ID`。
-- 2026-05-30 15:13 起，按 run `26674507740` 日志增加 `sanitize_custom_hardware_lists`：构建时从 `CONFIG_CUSTOM_KERNEL_LCM` 和 `CONFIG_CUSTOM_KERNEL_IMGSENSOR` 里剔除 KKNX 源码树不存在的目录，并输出 `hardware-list-sanitize.txt`。本次会剔除 `ili9882n_vdo_hdp_xinli`、`td4160_vdo_hdp_boe_xinli`、`hynix_hi556_ii`；这只是为了继续验证 `Image.gz/config-docker-final` 编译链路，不代表产物已可刷。
+- 2026-05-30 15:13 曾短暂加入 `sanitize_custom_hardware_lists`，会剔除源码不存在的硬件目录；该策略已废弃。
+- 2026-05-30 15:41 起，改为 `verify_custom_hardware_lists`：只校验 `CONFIG_CUSTOM_KERNEL_LCM` 和 `CONFIG_CUSTOM_KERNEL_IMGSENSOR` 能否在当前源码树找到对应目录，不再自动删配置项。校验结果输出到 `hardware-list-verify.txt`。
+- 配置根因已确认：workflow 原先把 `BASE_CONFIG` 固定为 89 实机 `current.config`。该文件是 `ARCH_MTK_PROJECT="angelican"`，并包含 `ov_ov02b_*`、`gc_gc02m*`、`ili9882n_vdo_hdp_xinli`、`td4160_vdo_hdp_boe_xinli` 等 angelican/实机硬件列表；KKNX `blossom_stock_defconfig` 是 `ARCH_MTK_PROJECT="dandelion"`，且源码/注册表只完整支持自己的 dandelion 硬件列表。因此直接用整份 `current.config` 覆盖 KKNX 是后续 camera/LCM 编译错误的配置层根因。
 - 旧 `niigo` 兼容补丁默认不执行，只有显式设置 `APPLY_LEGACY_NIIGO_PATCHES=1` 才会执行。
 - 已移除默认 `MTK_*`、`MTK_LCM`、camera、GPS、display 相关禁用项，只保留 Docker 需要的内核配置补项和当前已禁用的 `FHANDLE` 策略。
 
@@ -127,7 +134,7 @@
 2. 先检查 `config-docker-final`，确认只补 Docker 项，没有动显示、相机、触控、GPS 等硬件相关配置。
 3. 未确认构建配置前，不 repack boot，不推手机，不刷 boot。
 4. 如果后续需要 SSH 操作 89，优先使用 `tools/phone_ssh.py`。
-5. 如果 `hardware-list-sanitize.txt` 非空，必须先确认实际 89 机器不依赖被剔除的 LCM/camera 驱动，或找到对应源码补齐；否则该内核只能作为编译验证产物，不能进入 boot 打包流程。
+5. 如果 `hardware-list-verify.txt` 出现 missing 项，必须停止；不能通过删硬件项或随手补 sensor id 继续产出可刷 boot。
 
 ## 构建记录
 
@@ -147,4 +154,5 @@
 - 2026-05-30 run `26673740215` 前述 EFI/nf_log/net-procfs 错误已通过，新的失败点为 MTK GED 使用 `event_trace_printk` 时缺 `CONFIG_TRACE_PRINTK`；并发还暴露 `net/ipv4/fib_trie.c` 两处 `if !proc_create(...)` 语法错误。
 - 2026-05-30 run `26674178286` 前述 GED 和 fib_trie 语法错误已通过，新的失败点为 `net/ipv4/fib_trie.c` 的 `fib_trie_fops`/`fib_triestat_fops` 不存在；并发还暴露 `gc_gc02m10_ii_Sensor.c` 的 `gc02m10_SENSOR_ID` 未定义。
 - 2026-05-30 run `26674507740` 前述 fib_trie/gc02m10 错误已通过，新的失败点为 `CONFIG_CUSTOM_KERNEL_LCM` 引用 KKNX 源码不存在的 `ili9882n_vdo_hdp_xinli` 目录，以及 `CONFIG_CUSTOM_KERNEL_IMGSENSOR` 引用不存在的 `hynix_hi556_ii` 目录。同步核查发现当前 `current.config` 里还有源码不存在的 `td4160_vdo_hdp_boe_xinli`。
-- 2026-05-30 15:13 本地已增加自定义硬件列表过滤与 artifact 记录，等待重新触发 GitHub Actions 验证。
+- 2026-05-30 run `26677832945` 使用短暂的硬件列表过滤后，LCM/hynix 缺目录错误消失，但继续暴露 `ov_ov02b_v` 的 `OV02B_V_SENSOR_ID` 未定义。这证明过滤只是把不匹配配置往后推，不是正确策略。
+- 2026-05-30 15:41 本地已改为 KKNX `blossom_stock_defconfig` 起步，`current.config` 不再默认参与构建，并把硬件列表处理改为只校验不修改，等待重新触发 GitHub Actions 验证。
